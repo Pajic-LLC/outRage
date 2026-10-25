@@ -121,20 +121,32 @@ struct OutRageHostApp: App {
         let processNeedle = profile.resolvedProcessMatch
         let monitor = ProcessHandoffMonitor()
         let baselinePIDs = try monitor.baselinePIDs(commandContains: processNeedle)
-        let command = try ManagedLauncherBootstrap.makeInstalledLauncherCommand(
+
+        let command: LaunchCommand
+        if let bootstrapURL = try ManagedLauncherBootstrap.targetBootstrapURL(
             profile: profile,
             paths: paths
-        )
+        ), FileManager.default.fileExists(atPath: bootstrapURL.path) {
+            command = try ManagedLauncherBootstrap.makeTargetBootstrapCommand(
+                profile: profile,
+                paths: paths
+            )
+        } else {
+            command = try ManagedLauncherBootstrap.makeInstalledLauncherCommand(
+                profile: profile,
+                paths: paths
+            )
+        }
 
         state = .launching(profile.displayName)
-        let launcher = try ProcessRunner.start(
+        let starter = try ProcessRunner.start(
             command,
             outputURL: paths.logURL(for: profile.id)
         )
-        runningProcess = launcher
+        runningProcess = starter
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            guard launcher.isRunning else { return }
+            guard starter.isRunning else { return }
             hideNativeHost()
         }
 
@@ -142,7 +154,7 @@ struct OutRageHostApp: App {
             do {
                 let target = try await monitor.waitForTarget(
                     commandContains: processNeedle,
-                    launcherPID: launcher.processIdentifier,
+                    launcherPID: starter.processIdentifier,
                     excluding: baselinePIDs,
                     timeout: .seconds(600)
                 )
