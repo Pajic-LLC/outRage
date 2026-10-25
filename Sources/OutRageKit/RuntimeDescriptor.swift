@@ -1,15 +1,63 @@
 import Foundation
 
+public enum RuntimeFileScope: String, Codable, Sendable {
+    case target
+    case prefix
+    case cache
+}
+
+public enum RuntimeFileMode: String, Codable, Sendable {
+    case copy
+    case symlink
+}
+
+public struct RuntimeFileMapping: Codable, Equatable, Sendable {
+    public var source: String
+    public var destinationScope: RuntimeFileScope
+    public var destination: String
+    public var mode: RuntimeFileMode
+
+    public init(
+        source: String,
+        destinationScope: RuntimeFileScope,
+        destination: String,
+        mode: RuntimeFileMode = .symlink
+    ) {
+        self.source = source
+        self.destinationScope = destinationScope
+        self.destination = destination
+        self.mode = mode
+    }
+
+    public func validate() throws {
+        guard !source.isEmpty, !source.hasPrefix("/"), !source.split(separator: "/").contains("..") else {
+            throw RuntimeDescriptorError.invalidFileMapping(source)
+        }
+        guard !destination.isEmpty,
+              !destination.hasPrefix("/"),
+              !destination.split(separator: "/").contains("..") else {
+            throw RuntimeDescriptorError.invalidFileMapping(destination)
+        }
+    }
+}
+
 public struct RuntimeBackendConfiguration: Codable, Equatable, Sendable {
     public var arguments: [String]?
     public var environment: [String: String]?
+    public var fileMappings: [RuntimeFileMapping]?
 
     public init(
         arguments: [String]? = nil,
-        environment: [String: String]? = nil
+        environment: [String: String]? = nil,
+        fileMappings: [RuntimeFileMapping]? = nil
     ) {
         self.arguments = arguments
         self.environment = environment
+        self.fileMappings = fileMappings
+    }
+
+    public func validate() throws {
+        try fileMappings?.forEach { try $0.validate() }
     }
 }
 
@@ -53,7 +101,7 @@ public struct RuntimeDescriptor: Codable, Equatable, Sendable {
         guard !id.isEmpty else {
             throw RuntimeDescriptorError.emptyID
         }
-        guard !executable.isEmpty, !executable.hasPrefix("/") else {
+        guard !executable.isEmpty, !executable.hasPrefix("/"), !executable.split(separator: "/").contains("..") else {
             throw RuntimeDescriptorError.executableMustBeRelative(executable)
         }
         guard !supportedCPUBackends.isEmpty else {
@@ -64,17 +112,19 @@ public struct RuntimeDescriptor: Codable, Equatable, Sendable {
         }
 
         if let cpuConfigurations {
-            for key in cpuConfigurations.keys {
+            for (key, configuration) in cpuConfigurations {
                 guard let backend = CPUBackend(rawValue: key), backend != .auto else {
                     throw RuntimeDescriptorError.invalidCPUConfiguration(key)
                 }
+                try configuration.validate()
             }
         }
         if let graphicsConfigurations {
-            for key in graphicsConfigurations.keys {
+            for (key, configuration) in graphicsConfigurations {
                 guard let backend = GraphicsBackend(rawValue: key), backend != .auto else {
                     throw RuntimeDescriptorError.invalidGraphicsConfiguration(key)
                 }
+                try configuration.validate()
             }
         }
     }
@@ -96,6 +146,7 @@ public enum RuntimeDescriptorError: Error, Equatable, CustomStringConvertible {
     case noGraphicsBackends
     case invalidCPUConfiguration(String)
     case invalidGraphicsConfiguration(String)
+    case invalidFileMapping(String)
 
     public var description: String {
         switch self {
@@ -106,6 +157,7 @@ public enum RuntimeDescriptorError: Error, Equatable, CustomStringConvertible {
         case .noGraphicsBackends: return "Runtime must declare at least one graphics backend"
         case .invalidCPUConfiguration(let value): return "Invalid CPU backend configuration: \(value)"
         case .invalidGraphicsConfiguration(let value): return "Invalid graphics backend configuration: \(value)"
+        case .invalidFileMapping(let value): return "Runtime file mapping must use a managed relative path: \(value)"
         }
     }
 }
