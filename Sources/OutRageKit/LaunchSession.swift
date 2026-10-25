@@ -85,6 +85,16 @@ public enum LaunchSessionBuilder {
             cacheRoot: paths.cacheURL(for: profile.id)
         )
 
+        try PrefixManager.ensureInitialized(
+            runtime: installed.descriptor,
+            runtimeRoot: installed.rootURL,
+            cpu: resolvedProfile.cpu,
+            graphics: resolvedProfile.graphics,
+            context: context,
+            logURL: paths.logURL(for: profile.id),
+            fileManager: fileManager
+        )
+
         try RuntimeOverlayInstaller.apply(
             runtime: installed.descriptor,
             cpu: resolvedProfile.cpu,
