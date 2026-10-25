@@ -7,6 +7,7 @@ public struct AppBundleBuilder {
     public func build(
         profile: RuntimeProfile,
         hostExecutable: URL,
+        iconURL: URL? = nil,
         outputDirectory: URL,
         fileManager: FileManager = .default
     ) throws -> URL {
@@ -28,14 +29,33 @@ public struct AppBundleBuilder {
         try fileManager.copyItem(at: hostExecutable, to: destinationExecutable)
         try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: destinationExecutable.path)
 
+        var iconName: String?
+        if let iconURL {
+            guard iconURL.pathExtension.lowercased() == "icns",
+                  fileManager.fileExists(atPath: iconURL.path) else {
+                throw AppBundleBuilderError.invalidIcon(iconURL.path)
+            }
+            let destinationIcon = resources.appendingPathComponent("AppIcon.icns")
+            try fileManager.copyItem(at: iconURL, to: destinationIcon)
+            iconName = "AppIcon"
+        }
+
         try ProfileLoader.save(profile, to: resources.appendingPathComponent("profile.json"))
-        try writeInfoPlist(profile: profile, to: contents.appendingPathComponent("Info.plist"))
+        try writeInfoPlist(
+            profile: profile,
+            iconName: iconName,
+            to: contents.appendingPathComponent("Info.plist")
+        )
 
         return appURL
     }
 
-    private func writeInfoPlist(profile: RuntimeProfile, to url: URL) throws {
-        let plist: [String: Any] = [
+    private func writeInfoPlist(
+        profile: RuntimeProfile,
+        iconName: String?,
+        to url: URL
+    ) throws {
+        var plist: [String: Any] = [
             "CFBundleDevelopmentRegion": "en",
             "CFBundleDisplayName": profile.displayName,
             "CFBundleExecutable": "outRageHost",
@@ -45,9 +65,16 @@ public struct AppBundleBuilder {
             "CFBundlePackageType": "APPL",
             "CFBundleShortVersionString": "0.1",
             "CFBundleVersion": "1",
+            "LSApplicationCategoryType": "public.app-category.games",
             "LSMinimumSystemVersion": "14.0",
-            "NSHighResolutionCapable": true
+            "LSMultipleInstancesProhibited": true,
+            "NSHighResolutionCapable": true,
+            "NSSupportsAutomaticGraphicsSwitching": true
         ]
+        if let iconName {
+            plist["CFBundleIconFile"] = iconName
+        }
+
         let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
         try data.write(to: url, options: .atomic)
     }
@@ -55,5 +82,15 @@ public struct AppBundleBuilder {
     private func sanitizeFileName(_ value: String) -> String {
         let forbidden = CharacterSet(charactersIn: "/:")
         return value.components(separatedBy: forbidden).joined(separator: "-")
+    }
+}
+
+public enum AppBundleBuilderError: Error, Equatable, CustomStringConvertible {
+    case invalidIcon(String)
+
+    public var description: String {
+        switch self {
+        case .invalidIcon(let path): return "App icon must be an existing .icns file: \(path)"
+        }
     }
 }
