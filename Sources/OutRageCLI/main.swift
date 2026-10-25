@@ -45,6 +45,19 @@ struct OutRageCLI {
                 }
             }
 
+        case "runtime-pack":
+            guard arguments.count == 4 else {
+                throw CLIError.usage("runtime-pack <runtime-directory> <version> <output-directory>")
+            }
+            let artifacts = try RuntimePackager.build(
+                runtimeRoot: URL(fileURLWithPath: arguments[1], isDirectory: true),
+                version: arguments[2],
+                outputDirectory: URL(fileURLWithPath: arguments[3], isDirectory: true)
+            )
+            print("archive: \(artifacts.archiveURL.path)")
+            print("manifest: \(artifacts.manifestURL.path)")
+            print("sha256: \(artifacts.manifest.archiveSHA256)")
+
         case "runtime-install":
             guard arguments.count == 3 else {
                 throw CLIError.usage("runtime-install <runtime.zip> <manifest.json>")
@@ -194,17 +207,18 @@ struct OutRageCLI {
         print("""
         outRage developer utility
 
-          doctor                                  Inspect host capabilities
-          paths                                   Create and print runtime data path
-          runtimes                                List installed runtimes
-          runtime-install <zip> <manifest.json>   Install a verified runtime package
-          validate <profile.json>                 Validate a target profile
-          plan <profile.json>                     Resolve a launch plan
-          prepare <profile.json>                  Resolve a complete launch session
-          acquisition-plan <profile.json>         Resolve target acquisition
-          probe <windows-executable>              Inspect a PE target
-          launch <profile.json> [--wait]          Launch a configured target
-          bundle <profile.json> [...]             Build a native .app wrapper
+          doctor                                        Inspect host capabilities
+          paths                                         Create and print runtime data path
+          runtimes                                      List installed runtimes
+          runtime-pack <dir> <version> <output-dir>     Build a verified runtime package
+          runtime-install <zip> <manifest.json>         Install a verified runtime package
+          validate <profile.json>                       Validate a target profile
+          plan <profile.json>                           Resolve a launch plan
+          prepare <profile.json>                        Resolve a complete launch session
+          acquisition-plan <profile.json>               Resolve target acquisition
+          probe <windows-executable>                    Inspect a PE target
+          launch <profile.json> [--wait]                Launch a configured target
+          bundle <profile.json> [...]                   Build a native .app wrapper
         """)
     }
 }
