@@ -24,12 +24,18 @@ public enum LauncherMode: String, Codable, Sendable {
     case managed
 }
 
+public enum ExecutableScope: String, Codable, Sendable {
+    case target
+    case prefix
+}
+
 public struct RuntimeProfile: Codable, Equatable, Sendable {
     public var schemaVersion: Int
     public var id: String
     public var displayName: String
     public var bundleIdentifier: String
     public var executable: String
+    public var executableScope: ExecutableScope?
     public var workingDirectory: String?
     public var runtime: RuntimeKind
     public var runtimeIdentifier: String?
@@ -47,6 +53,7 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
         displayName: String,
         bundleIdentifier: String,
         executable: String,
+        executableScope: ExecutableScope? = .target,
         workingDirectory: String? = nil,
         runtime: RuntimeKind = .compatibility,
         runtimeIdentifier: String? = nil,
@@ -63,6 +70,7 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
         self.displayName = displayName
         self.bundleIdentifier = bundleIdentifier
         self.executable = executable
+        self.executableScope = executableScope
         self.workingDirectory = workingDirectory
         self.runtime = runtime
         self.runtimeIdentifier = runtimeIdentifier
@@ -73,6 +81,10 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
         self.arguments = arguments
         self.environment = environment
         self.acquisition = acquisition
+    }
+
+    public var resolvedExecutableScope: ExecutableScope {
+        executableScope ?? .target
     }
 
     public func validate() throws {
@@ -88,11 +100,17 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
         guard bundleIdentifier.contains("."), !bundleIdentifier.contains(" ") else {
             throw ProfileValidationError.invalidBundleIdentifier(bundleIdentifier)
         }
-        guard !executable.isEmpty, !executable.hasPrefix("/") else {
+        guard !executable.isEmpty,
+              !executable.hasPrefix("/"),
+              !executable.split(separator: "/").contains("..") else {
             throw ProfileValidationError.executableMustBeRelative(executable)
         }
-        if let workingDirectory, workingDirectory.hasPrefix("/") {
+        if let workingDirectory,
+           workingDirectory.hasPrefix("/") || workingDirectory.split(separator: "/").contains("..") {
             throw ProfileValidationError.workingDirectoryMustBeRelative(workingDirectory)
+        }
+        if resolvedExecutableScope == .prefix, runtime == .native {
+            throw ProfileValidationError.prefixExecutableRequiresCompatibilityRuntime
         }
         if let runtimeIdentifier {
             guard !runtimeIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
@@ -121,6 +139,7 @@ public enum ProfileValidationError: Error, Equatable, CustomStringConvertible {
     case invalidBundleIdentifier(String)
     case executableMustBeRelative(String)
     case workingDirectoryMustBeRelative(String)
+    case prefixExecutableRequiresCompatibilityRuntime
     case invalidRuntimeIdentifier(String)
     case runtimePackageIdentifierMismatch(expected: String, actual: String)
 
@@ -132,6 +151,7 @@ public enum ProfileValidationError: Error, Equatable, CustomStringConvertible {
         case .invalidBundleIdentifier(let value): return "Invalid bundle identifier: \(value)"
         case .executableMustBeRelative(let value): return "Executable path must be relative: \(value)"
         case .workingDirectoryMustBeRelative(let value): return "Working directory must be relative: \(value)"
+        case .prefixExecutableRequiresCompatibilityRuntime: return "Prefix executables require a compatibility runtime"
         case .invalidRuntimeIdentifier(let value): return "Invalid runtime identifier: \(value)"
         case .runtimePackageIdentifierMismatch(let expected, let actual):
             return "Runtime package identifier mismatch: expected \(expected), found \(actual)"
