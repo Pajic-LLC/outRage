@@ -2,9 +2,15 @@ import Foundation
 
 public final class RunningProcess {
     public let process: Process
+    private let outputHandle: FileHandle?
 
-    init(process: Process) {
+    init(process: Process, outputHandle: FileHandle? = nil) {
         self.process = process
+        self.outputHandle = outputHandle
+    }
+
+    deinit {
+        try? outputHandle?.close()
     }
 
     public var processIdentifier: Int32 { process.processIdentifier }
@@ -21,6 +27,7 @@ public final class RunningProcess {
 
     public func waitUntilExit() {
         process.waitUntilExit()
+        try? outputHandle?.synchronize()
     }
 }
 
@@ -29,6 +36,7 @@ public enum ProcessRunner {
     public static func start(
         _ command: LaunchCommand,
         inheritEnvironment: Bool = true,
+        outputURL: URL? = nil,
         fileManager: FileManager = .default
     ) throws -> RunningProcess {
         guard fileManager.isExecutableFile(atPath: command.executableURL.path) else {
@@ -47,14 +55,43 @@ public enum ProcessRunner {
         command.environment.forEach { environment[$0.key] = $0.value }
         process.environment = environment
 
-        try process.run()
-        return RunningProcess(process: process)
+        let outputHandle: FileHandle?
+        if let outputURL {
+            try fileManager.createDirectory(
+                at: outputURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            if !fileManager.fileExists(atPath: outputURL.path) {
+                guard fileManager.createFile(atPath: outputURL.path, contents: nil) else {
+                    throw ProcessRunnerError.logUnavailable(outputURL.path)
+                }
+            }
+
+            let handle = try FileHandle(forWritingTo: outputURL)
+            try handle.seekToEnd()
+            let timestamp = ISO8601DateFormatter().string(from: Date())
+            try handle.write(contentsOf: Data("\n--- outRage session \(timestamp) ---\n".utf8))
+            process.standardOutput = handle
+            process.standardError = handle
+            outputHandle = handle
+        } else {
+            outputHandle = nil
+        }
+
+        do {
+            try process.run()
+        } catch {
+            try? outputHandle?.close()
+            throw error
+        }
+        return RunningProcess(process: process, outputHandle: outputHandle)
     }
 }
 
 public enum ProcessRunnerError: Error, Equatable, CustomStringConvertible {
     case executableNotFound(String)
     case workingDirectoryNotFound(String)
+    case logUnavailable(String)
 
     public var description: String {
         switch self {
@@ -62,6 +99,8 @@ public enum ProcessRunnerError: Error, Equatable, CustomStringConvertible {
             return "Launch executable is missing or not executable: \(path)"
         case .workingDirectoryNotFound(let path):
             return "Launch working directory does not exist: \(path)"
+        case .logUnavailable(let path):
+            return "Unable to create launch log: \(path)"
         }
     }
 }
