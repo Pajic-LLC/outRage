@@ -12,6 +12,8 @@ public struct AcquisitionDescriptor: Codable, Equatable, Sendable {
     public var installerURL: URL?
     public var installerSHA256: String?
     public var installerArguments: [String]?
+    public var managedLauncherExecutable: String?
+    public var managedLauncherArguments: [String]?
     public var steamAppID: Int?
     public var steamBranch: String?
 
@@ -21,6 +23,8 @@ public struct AcquisitionDescriptor: Codable, Equatable, Sendable {
         installerURL: URL? = nil,
         installerSHA256: String? = nil,
         installerArguments: [String]? = nil,
+        managedLauncherExecutable: String? = nil,
+        managedLauncherArguments: [String]? = nil,
         steamAppID: Int? = nil,
         steamBranch: String? = nil
     ) {
@@ -29,6 +33,8 @@ public struct AcquisitionDescriptor: Codable, Equatable, Sendable {
         self.installerURL = installerURL
         self.installerSHA256 = installerSHA256
         self.installerArguments = installerArguments
+        self.managedLauncherExecutable = managedLauncherExecutable
+        self.managedLauncherArguments = managedLauncherArguments
         self.steamAppID = steamAppID
         self.steamBranch = steamBranch
     }
@@ -41,11 +47,19 @@ public struct AcquisitionDescriptor: Codable, Equatable, Sendable {
                installerSHA256.range(of: #"^[a-fA-F0-9]{64}$"#, options: .regularExpression) == nil {
                 throw AcquisitionError.invalidInstallerSHA256
             }
+            if let managedLauncherExecutable,
+               !Self.isManagedRelativePath(managedLauncherExecutable) {
+                throw AcquisitionError.invalidManagedLauncherExecutable(managedLauncherExecutable)
+            }
         case .steam:
             guard let steamAppID, steamAppID > 0 else { throw AcquisitionError.steamAppIDRequired }
         case .importExisting:
             break
         }
+    }
+
+    private static func isManagedRelativePath(_ value: String) -> Bool {
+        !value.isEmpty && !value.hasPrefix("/") && !value.split(separator: "/").contains("..")
     }
 }
 
@@ -55,6 +69,8 @@ public enum AcquisitionAction: Equatable, Sendable {
         expectedSHA256: String?,
         installerDestinationURL: URL,
         installerArguments: [String],
+        installedLauncherURL: URL?,
+        launcherArguments: [String],
         targetRoot: URL
     )
     case steam(appID: Int, branch: String?, targetRoot: URL)
@@ -79,11 +95,16 @@ public enum AcquisitionPlanner {
             }
             let installerDestination = paths.cacheURL(for: profile.id)
                 .appendingPathComponent("bootstrap-installer.exe")
+            let installedLauncherURL = acquisition.managedLauncherExecutable.map {
+                paths.prefixURL(for: profile.id).appendingPathComponent($0)
+            }
             return .managedLauncher(
                 sourceURL: sourceURL,
                 expectedSHA256: acquisition.installerSHA256,
                 installerDestinationURL: installerDestination,
                 installerArguments: acquisition.installerArguments ?? [],
+                installedLauncherURL: installedLauncherURL,
+                launcherArguments: acquisition.managedLauncherArguments ?? [],
                 targetRoot: targetRoot
             )
         case .steam:
@@ -105,6 +126,7 @@ public enum AcquisitionError: Error, Equatable, CustomStringConvertible {
     case notConfigured
     case installerURLRequired
     case invalidInstallerSHA256
+    case invalidManagedLauncherExecutable(String)
     case steamAppIDRequired
 
     public var description: String {
@@ -112,6 +134,7 @@ public enum AcquisitionError: Error, Equatable, CustomStringConvertible {
         case .notConfigured: return "No acquisition method is configured"
         case .installerURLRequired: return "Managed launcher acquisition requires an installer URL"
         case .invalidInstallerSHA256: return "Installer SHA-256 must be 64 hexadecimal characters"
+        case .invalidManagedLauncherExecutable(let value): return "Managed launcher executable must use a relative prefix path: \(value)"
         case .steamAppIDRequired: return "Steam acquisition requires a valid app identifier"
         }
     }
