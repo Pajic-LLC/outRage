@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Swift version
+        run: swift --version
+      - name: Validate runtime tooling
+        run: |
+          bash -n Tools/runtime/build-foss-metal-runtime.sh
+          bash -n Tools/runtime/build-x86_64-runtime-deps.sh
+          bash -n Tools/runtime/bundle-runtime-dylibs.sh
+          bash -n Tools/runtime/audit-runtime-dylibs.sh
+          bash -n Tools/runtime/smoke/verify-installed-runtime.sh
+          python3 -m py_compile Tools/runtime/patch-winemac-native-identity.py
+          python3 Tools/runtime/test-patch-winemac-native-identity.py
+      - name: Test
+        run: swift test
+      - name: Build release tools
+        run: swift build -c release --product outrage --product outrage-host

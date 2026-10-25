@@ -1,0 +1,13 @@
+{
+  "arguments" : [],
+  "bundleIdentifier" : "com.pajic.outrage.bootstrap",
+  "cpu" : "auto",
+  "displayName" : "Bootstrap Target",
+  "environment" : {},
+  "executable" : "bin/target.exe",
+  "graphics" : "auto",
+  "id" : "bootstrap",
+  "launcher" : "managed",
+  "runtime" : "compatibility",
+  "schemaVersion" : 1
+}
