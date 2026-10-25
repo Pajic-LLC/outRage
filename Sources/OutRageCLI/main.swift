@@ -83,6 +83,27 @@ struct OutRageCLI {
             let installed = try RuntimeInstaller.install(archiveURL: archive, manifest: manifest)
             print("installed: \(installed.descriptor.id)\t\(installed.rootURL.path)")
 
+        case "runtime-smoke-dxmt":
+            guard arguments.count == 2 else {
+                throw CLIError.usage("runtime-smoke-dxmt <runtime-id>")
+            }
+            let paths = RuntimePaths()
+            try paths.ensureDirectories()
+            let installed = try RuntimeCatalog(runtimesURL: paths.runtimesURL).resolve(
+                identifier: arguments[1]
+            )
+            let cpu = try BackendResolver.resolveCPU(
+                requested: .auto,
+                runtime: installed.descriptor,
+                host: .current()
+            )
+            let result = try DXMTRuntimeSmokeVerifier.run(
+                installedRuntime: installed,
+                cpu: cpu
+            )
+            print("verified: \(result.runtimeIdentifier)")
+            print("modules: \(result.loadedModules.sorted().joined(separator: ","))")
+
         case "validate":
             guard arguments.count == 2 else { throw CLIError.usage("validate <profile.json>") }
             let profile = try ProfileLoader.load(from: URL(fileURLWithPath: arguments[1]))
@@ -263,6 +284,7 @@ struct OutRageCLI {
           runtime-build-metal <engine> <backend> <id> <ver> <out>  Compose and package a Metal runtime
           runtime-pack <dir> <version> <output-dir>                 Build a verified runtime package
           runtime-install <zip> <manifest.json>                     Install a verified runtime package
+          runtime-smoke-dxmt <runtime-id>                           Verify DXMT initializes through Wine
           validate <profile.json>                                   Validate a target profile
           plan <profile.json>                                       Resolve a launch plan
           prepare <profile.json>                                    Resolve a complete launch session
