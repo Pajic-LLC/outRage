@@ -68,12 +68,21 @@ public enum BuiltinMetalRuntimeComposer {
                 "WINEDEBUG": "-all",
                 "DXMT_SHADER_CACHE_PATH": "${CACHE_ROOT}/dxmt-shaders",
                 "DXMT_LOG_PATH": "${CACHE_ROOT}/dxmt-logs",
-                "DXMT_LOG_LEVEL": "error"
+                "DXMT_LOG_LEVEL": "error",
+                "OUTRAGE_TARGET_DRIVE": "O:"
             ],
             prefixInitializer: RuntimeCommandDescriptor(
                 executable: wineboot,
                 arguments: ["--init"]
             ),
+            pathMappings: [
+                RuntimePathMapping(
+                    sourceScope: .target,
+                    source: ".",
+                    destinationScope: .prefix,
+                    destination: "dosdevices/o:"
+                )
+            ],
             supportedCPUBackends: [.rosetta],
             supportedGraphicsBackends: [.dxmt],
             graphicsConfigurations: [
