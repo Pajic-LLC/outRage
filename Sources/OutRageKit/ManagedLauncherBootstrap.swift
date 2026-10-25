@@ -98,20 +98,43 @@ public enum ManagedLauncherBootstrap {
             throw ManagedLauncherBootstrapError.launcherNotInstalled(launcherURL.path)
         }
 
+        let targetURL = paths.executableURL(for: profile)
         let prepared = try RuntimeEnvironmentPreparer.prepare(
             profile: profile,
-            executableForProbe: launcherURL,
+            executableForProbe: fileManager.fileExists(atPath: targetURL.path) ? targetURL : launcherURL,
             paths: paths,
             host: host,
             fileManager: fileManager
         )
-        return try makeCommand(
+        var command = try makeCommand(
             profile: profile,
             executableURL: launcherURL,
             arguments: launcherArguments,
             suffix: ".launcher",
             prepared: prepared
         )
+
+        if fileManager.fileExists(atPath: targetURL.path),
+           let targetFingerprint = try? TargetBuildFingerprint.inspect(
+               executableURL: targetURL,
+               fileManager: fileManager
+           ) {
+            let cacheFingerprint = RuntimeCacheFingerprint(
+                profileID: profile.id,
+                target: targetFingerprint,
+                runtimeIdentifier: prepared.installedRuntime.descriptor.id,
+                runtimeRevision: prepared.installedRuntime.descriptor.revision ?? 1,
+                graphicsBackend: prepared.graphics
+            )
+            let cache = try RuntimeCacheManager.prepare(
+                fingerprint: cacheFingerprint,
+                paths: paths,
+                fileManager: fileManager
+            )
+            command = PerformanceLaunchTuner.tune(command, cache: cache)
+        }
+
+        return command
     }
 
     private static func makeCommand(
