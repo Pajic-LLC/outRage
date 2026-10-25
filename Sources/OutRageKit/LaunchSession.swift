@@ -85,6 +85,14 @@ public enum LaunchSessionBuilder {
             cacheRoot: paths.cacheURL(for: profile.id)
         )
 
+        try RuntimeOverlayInstaller.apply(
+            runtime: installed.descriptor,
+            cpu: resolvedProfile.cpu,
+            graphics: resolvedProfile.graphics,
+            context: context,
+            fileManager: fileManager
+        )
+
         let command = try LaunchCommandBuilder.make(
             plan: plan,
             runtime: installed.descriptor,
