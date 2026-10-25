@@ -1,0 +1,71 @@
+name: Native Window Diagnostic Driver
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install build tools
+        run: brew install bison flex mingw-w64 pkgconf
+      - name: Build pinned Wine native window diagnostic driver
+        run: |
+          REPO_ROOT="$PWD"
+          mkdir -p "$RUNNER_TEMP/window-driver/source" "$RUNNER_TEMP/window-driver/build" "$RUNNER_TEMP/window-driver/modules"
+          cd "$RUNNER_TEMP/window-driver"
+          curl --fail --location --retry 3 -o crossover.tar.gz https://media.codeweavers.com/pub/crossover/source/crossover-sources-26.3.0.tar.gz
+          echo 'ac99c8ca4b3848f3e81784135f023df266b61c2345726ea55a50b3e030dd6872  crossover.tar.gz' | shasum -a 256 -c -
+          tar -xzf crossover.tar.gz -C source sources/wine
+          python3 "$REPO_ROOT/Tools/runtime/patch-winemac-native-identity.py" source/sources/wine
+          python3 "$REPO_ROOT/Tools/runtime/patch-winemac-window-diagnostics.py" source/sources/wine
+          # Match the verified base engine's no-MoltenVK build guard. This pinned
+          # CrossOver source references the SONAME even with --without-vulkan.
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("source/sources/wine/dlls/win32u/vulkan.c")
+          s = p.read_text()
+          anchor = "static void vulkan_init_once(void)"
+          assert s.count(anchor) == 1
+          s = s.replace(anchor, '#ifndef SONAME_LIBVULKAN\n#define SONAME_LIBVULKAN "libMoltenVK.dylib"\n#endif\n\n' + anchor)
+          p.write_text(s)
+          PY
+          export PATH="$(brew --prefix bison)/bin:$(brew --prefix flex)/bin:$(brew --prefix)/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+          export PKG_CONFIG_PATH=
+          export PKG_CONFIG_LIBDIR="$RUNNER_TEMP/no-pkgconfig"
+          export MACOSX_DEPLOYMENT_TARGET=14.0
+          export CC='clang -arch x86_64'
+          export CXX='clang++ -arch x86_64'
+          export OBJC='clang -arch x86_64'
+          cd build
+          arch -x86_64 /bin/bash ../source/sources/wine/configure \
+            --enable-archs=x86_64 --disable-tests --without-x --without-vulkan \
+            --without-gstreamer --without-gnutls --without-freetype --without-sdl \
+            > ../configure.log 2>&1
+          arch -x86_64 make -j3 dlls/winemac.drv/all > ../make.log 2>&1
+          cp dlls/winemac.drv/winemac.so ../modules/
+          cd ../modules
+          file winemac.so
+          lipo winemac.so -verify_arch x86_64
+          otool -L winemac.so > DEPENDENCIES.txt
+          shasum -a 256 winemac.so DEPENDENCIES.txt > SHA256SUMS
+      - name: Upload developer driver
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: wine-window-diagnostic-driver
+          path: ${{ runner.temp }}/window-driver/modules/
+          retention-days: 7
+      - name: Upload failure logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: wine-window-driver-failure-logs
+          path: ${{ runner.temp }}/window-driver/*.log
+          if-no-files-found: ignore
+          retention-days: 7

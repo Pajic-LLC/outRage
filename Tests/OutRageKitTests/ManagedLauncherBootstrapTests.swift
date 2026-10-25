@@ -45,6 +45,7 @@ import Testing
             kind: .managedLauncher,
             installerURL: URL(string: "https://example.com/installer.exe")!,
             managedLauncherExecutable: "drive_c/Launcher/Launcher.exe",
+            managedLauncherDisplayName: "Rockstar Games Launcher",
             managedLauncherArguments: ["--resume"]
         )
     )
@@ -67,6 +68,11 @@ import Testing
         runtimeExecutable.resolvingSymlinksInPath()
     )
     #expect(command.arguments == [launcher.path, "--resume"])
+    #expect(command.environment["OUTRAGE_APP_NAME"] == "Rockstar Games Launcher")
+    let installerCommand = try ManagedLauncherBootstrap.makeInstallerCommand(
+        profile: profile, installerURL: launcher, paths: paths, host: host, fileManager: fm
+    )
+    #expect(installerCommand.environment["OUTRAGE_APP_NAME"] == "Rockstar Games Launcher")
     #expect(command.environment["OUTRAGE_BUILD_CACHE_ROOT"] != nil)
     #expect(command.environment["OUTRAGE_SHADER_CACHE_PATH"] != nil)
 
@@ -117,6 +123,7 @@ import Testing
             kind: .managedLauncher,
             installerURL: URL(string: "https://example.com/installer.exe")!,
             managedLauncherExecutable: "drive_c/Launcher/Launcher.exe",
+            managedLauncherDisplayName: "Rockstar Games Launcher",
             targetBootstrapExecutable: "PlayTarget.exe",
             targetBootstrapArguments: ["--story"]
         )
@@ -139,6 +146,7 @@ import Testing
 
     #expect(command.executableURL.resolvingSymlinksInPath() == runtimeExecutable.resolvingSymlinksInPath())
     #expect(command.arguments == [bootstrap.path, "--story"])
+    #expect(command.environment["OUTRAGE_APP_NAME"] == "Bootstrap Target")
     #expect(command.workingDirectoryURL == targetRoot)
     #expect(command.environment["OUTRAGE_BUILD_CACHE_ROOT"] != nil)
     #expect(command.environment["OUTRAGE_SHADER_CACHE_PATH"] != nil)

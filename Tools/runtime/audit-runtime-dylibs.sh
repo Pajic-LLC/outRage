@@ -51,7 +51,7 @@ while IFS= read -r -d '' candidate; do
   done < <(
     otool -L "$candidate" 2>/dev/null |
       tail -n +2 |
-      sed -E 's/^[[:space:]]*([^[:space:]]+).*/\1/'
+      sed -nE '/^[[:space:]].* \(compatibility version / { s/^[[:space:]]+//; s/ \(compatibility version.*$//; p; }'
   )
 
   while IFS= read -r rpath; do

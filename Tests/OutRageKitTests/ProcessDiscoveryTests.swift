@@ -1,5 +1,16 @@
+import Foundation
 import Testing
 @testable import OutRageKit
+
+@Test func processDiscoveryDrainsOutputLargerThanPipeCapacity() throws {
+    let snapshots = try ProcessDiscovery.snapshots(
+        executableURL: URL(fileURLWithPath: "/usr/bin/awk"),
+        arguments: ["BEGIN { for (i = 1; i <= 20000; i++) print i, 1, \"/runtime/Launcher.exe\" }"]
+    )
+    #expect(snapshots.count == 20000)
+    #expect(snapshots.last?.pid == 20000)
+    #expect(snapshots.last?.command == "/runtime/Launcher.exe")
+}
 
 @Test func processDiscoveryParsesAndFindsDescendants() {
     let output = """

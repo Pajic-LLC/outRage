@@ -20,15 +20,17 @@ A unit test is not the same thing as a product milestone. A subsystem is only **
 
 ### Current primary objective
 
-**Build and prove a launcher-capable, self-contained x86-64 compatibility runtime for Apple Silicon Macs, then use it to complete the first real managed-launcher title end-to-end.**
+**Prove GTA V Legacy Story Mode from legitimate ownership to gameplay through `Grand Theft Auto V.app` on Apple Silicon, using an outRage-managed runtime and DXMT/Metal. Vendor installation/update completes. The latest native activation trial reports drawn, opaque authentication/launcher windows active on the current Space; actual sign-in content, authentication and gameplay still await owner confirmation.**
 
-The current runtime already establishes the core package path. The next runtime must also carry the dependencies needed by modern authenticated launchers, remain portable without Homebrew on the end-user Mac, pass the DXMT/Metal smoke gate, and execute a real x86-64 Win32 program through Rosetta/Wine.
+The dependency-integrated runtime passed its complete CI package gate and local M2 Pro portability/DXMT/D3D11 checks. This establishes the runtime substrate, not Rockstar launcher compatibility or gameplay. See the exact artifact evidence below.
 
 ---
 
 # 1. Mission
 
-outRage exists to make an **owned Windows game behave as much like a normal macOS game as possible on Apple Silicon**.
+outRage makes **Rockstar RAGE-engine games feel like native Apple Silicon Mac games**. This is a Rockstar/RAGE compatibility platform, not a general-purpose Windows launcher or bottle manager.
+
+The owner-supplied [product vision](docs/PRODUCT_VISION.md) defines scope and title priorities: GTA V Legacy Story Mode first, then GTA IV, Max Payne 3, RDR2, GTA V Enhanced, and future compatible RAGE titles. ENRAGE remains separate modding infrastructure. These are planned targets, not proven support.
 
 The intended end state is not “open a Wine GUI, configure a bottle, launch a launcher, then launch a game.” The intended end state is:
 
@@ -81,7 +83,7 @@ The compatibility stack is an implementation detail. **The product experience sh
 - Every modified Mach-O is signed appropriately after relocation.
 - Runtime can be removed/reinstalled without corrupting title data.
 
-**Current status:** 🟡 Core runtime packaging/install verification is proven. Self-containment auditing exists. Pinned x86-64 launcher dependency work is active and still needs to be integrated and proven with the complete runtime.
+**Current status:** ✅ Runtime substrate proven. The dependency-integrated package builds, installs from its manifest, passes the 37-file Mach-O audit, and runs graphics/Windows probes in CI. The same ZIP passes the local M2 Pro audit and DXMT/D3D11 checks. Release signing and fresh-machine product acceptance remain.
 
 ## G3 — Metal-first graphics
 
@@ -99,7 +101,7 @@ The compatibility stack is an implementation detail. **The product experience sh
 - Per-title renderer policy can be updated without changing core code.
 - Real title renders correctly through the packaged runtime.
 
-**Current status:** 🟢 DXMT composition, overlay installation, backend resolution, cache/log preparation, and smoke-verifier code exist. The stricter packaged-runtime smoke gate is wired into the heavy workflow; the newest complete runtime still needs to finish proving all gates together.
+**Current status:** ✅ Packaged graphics substrate proven. Builtin DXMT module loading and hardware D3D11 device creation at feature level 11.0 pass in CI and on the physical M2 Pro. Real title rendering and performance remain unproven.
 
 ## G4 — Legitimate launcher fidelity
 
@@ -116,7 +118,7 @@ The compatibility stack is an implementation detail. **The product experience sh
 - Vendor-owned session state can persist naturally inside the prefix.
 - Game ownership/entitlement remains enforced by the vendor.
 - outRage can hand off from launcher/bootstrap to the actual game process and monitor the game rather than the launcher shell.
-- A launcher update does not require game-specific core code unless a genuinely generic compatibility issue is discovered.
+- Prefer a profile update for launcher policy changes; use targeted Rockstar/RAGE runtime fixes when a demonstrated failure requires code.
 
 **Current status:** 🟢 Managed-launcher acquisition/bootstrap, target-bootstrap configuration, process baseline/handoff, launcher-PID exclusion, and lifecycle code are implemented/tested. A real authenticated Tier-3 launcher must still be proven end-to-end.
 
@@ -124,7 +126,7 @@ The compatibility stack is an implementation detail. **The product experience sh
 
 **Goal:** Game-specific behavior belongs in a versioned profile instead of forks or `if game == ...` branches in the core.
 
-**Why:** outRage only scales if the host/runtime stays generic while title quirks remain declarative.
+**Why:** Versioned title recipes make Rockstar/RAGE fixes reviewable and maintainable. Shared infrastructure should support those recipes; targeted RAGE-specific code is appropriate when a demonstrated compatibility defect cannot be expressed in data.
 
 **Completion means:**
 
@@ -132,7 +134,7 @@ The compatibility stack is an implementation detail. **The product experience sh
 - Invalid paths and incompatible combinations fail validation before execution.
 - Signed profile updates can adjust compatibility policy without rebuilding every `.app`.
 - A title profile is reproducible and reviewable as data.
-- Core changes are reserved for behavior that is genuinely generic.
+- Prefer profiles for title policy; allow targeted Rockstar/RAGE core fixes backed by concrete failures and regression coverage.
 
 **Current status:** 🟢 Schema, validation, signed envelope/store/update plumbing, and effective-profile resolution exist with tests. Production profile distribution/signing policy still needs release work.
 
@@ -217,7 +219,7 @@ The compatibility stack is an implementation detail. **The product experience sh
 - Heavy runtime jobs only rerun when runtime-related inputs change or a manual rebuild is requested.
 - Release candidate gates run on the exact bytes intended for distribution.
 
-**Current status:** 🟡 Normal CI is green at the snapshot head. The dependency lane and newest heavy runtime lane are active work; the stricter gates are present but must finish together on the final launcher-capable runtime.
+**Current status:** ✅ Normal CI (79 Swift tests and native regressions) and the dependency-integrated runtime gate are green. Real authenticated launcher and title acceptance remain separate, unfinished work.
 
 ## G11 — Release/legal/compliance readiness
 
@@ -259,6 +261,8 @@ outRage is **not** a DRM bypass, crack, credential harvester, or ownership emula
 
 The project will not:
 
+- expand into a general-purpose Windows launcher, arbitrary Wine bottle manager, or unrelated storefront frontend;
+
 - bypass a vendor's authentication, license, entitlement, payment, or ownership checks;
 - capture/store launcher passwords for convenience;
 - patch game binaries for the purpose of bypassing DRM or anti-cheat;
@@ -275,7 +279,7 @@ If a title's required anti-cheat, kernel component, DRM, or vendor policy is inc
 
 # 4. Definition of complete
 
-outRage reaches the first meaningful “complete” milestone when a release candidate can take a supported, legitimately owned Windows title from a **fresh supported Apple Silicon Mac** to repeatable gameplay through a signed/notarized title app without developer tooling.
+outRage reaches the first meaningful “complete” milestone when a release candidate can take a supported, legitimately owned Rockstar/RAGE title from a **fresh supported Apple Silicon Mac** to repeatable gameplay through a signed/notarized title app without developer tooling.
 
 For the first release candidate, all of the following must be true:
 
@@ -514,12 +518,12 @@ Important `OutRageKit` areas include acquisition, bundle generation/signing, run
 | PE probing | 🟢 Implemented | Windows executable architecture/graphics-hint inspection exists. |
 | Runtime package/manifest/install | ✅ Proven | Package/build/install path has produced a verified installed runtime. |
 | Runtime catalog resilience | 🟢 Implemented | Malformed entries can be ignored during discovery without weakening install validation. |
-| x86-64 compatibility runtime | ✅ Proven (foundation) | A pinned x86-64 engine + Metal backend package has built and installed successfully; stricter launcher-ready runtime is the active milestone. |
+| x86-64 compatibility runtime | ✅ Proven (substrate) | Dependency-integrated `26.3.0+v0.80-launcher.1` passed all package gates; launcher/title proof remains. |
 | DXMT composition/overlay | 🟢 Implemented | Builtin layout and prefix overlay behavior are implemented/tested. |
-| DXMT packaged smoke | 🟡 In progress | Gate exists in heavy runtime workflow; newest complete runtime must pass it together with all other gates. |
-| Real Win32 packaged smoke | 🟡 In progress | Gate/harness exists; must pass on final launcher-capable package. |
-| Mach-O portability audit | 🟢 Implemented | Runtime workflow audits self-containment; final dependency-integrated package must pass. |
-| Pinned x86-64 launcher deps | 🟡 In progress | GMP/Nettle/GnuTLS/FreeType build lane exists; integration/proof is current work. |
+| DXMT packaged smoke | ✅ Proven | Builtin module loading and hardware D3D11 feature level 11.0 pass in CI and on the physical M2 Pro. |
+| Real Win32 packaged smoke | ✅ Proven | Windows PE probe passes on the exact dependency-integrated package in CI. |
+| Mach-O portability audit | ✅ Proven | All 37 Mach-O files pass on the installed CI package and the same downloaded ZIP locally. |
+| Pinned x86-64 launcher deps | ✅ Proven (packaging) | Locked GMP/Nettle/GnuTLS/FreeType libraries build, relocate, sign, and ship with the engine; vendor authentication remains unproven. |
 | Prefix management | 🟢 Implemented | Isolated per-title prefix prep exists. |
 | Path mapping/storage virtualization | 🟢 Implemented | Empty placeholder adoption + non-empty protection are covered. |
 | Direct launch | 🟢 Implemented | Canonical launch session path exists; real target proof belongs to reference-title milestone. |
@@ -539,7 +543,19 @@ Important `OutRageKit` areas include acquisition, bundle generation/signing, run
 
 ### Live build note
 
-At this snapshot, **Runtime Build #5** (native title identity runtime) and **Runtime Dependencies #1** (pinned x86-64 launcher dependencies) were still in progress. Their status is intentionally recorded as a snapshot only; GitHub Actions is authoritative for their live result.
+Follow-up evidence on 2026-10-25:
+
+- **Live launcher blockers:** owner completed the official installer. A native host sample exposed process-list pipe deadlock during installer-to-launcher handoff; fixed by draining output before wait, with a large-output regression. All 80 Swift tests pass in CI. Stock DXMT v0.80 aborts on SwapDeviceContextState; the new targeted probe confirms exit 3 on stock and exit 0 on exact upstream a148782. Experimental runtime passes audit/module/device/context probes. Vendor updates and Social Club 2.4.0.240 installation succeed, and the owner now confirms a visible signed-in Rockstar library after foreground-host/cooperative activation and scoped rendering work. Game installation and gameplay remain unproven. The owner has now selected Enhanced as the active target; see docs/GTA_V_ENHANCED.md. See docs/GTA_V_LEGACY.md for exact provenance, scope and the remaining process-patch trial.
+
+- **Complete integrated runtime proof:** [run 40187466116](https://github.com/Pajic-LLC/outRage/actions/runs/40187466116) at `659a9fa` passed engine build, package installation, 37-file portability audit, builtin DXMT initialization, hardware D3D11 device creation (`0xb000` / 11.0), and Win32 PE execution before uploading its artifact. Version `26.3.0+v0.80-launcher.1`; ZIP SHA-256 `768d08841981dbcb793a355e37ef027172928a205ea526d798be3263053b744b`.
+- **Physical M2 Pro proof:** downloaded that ZIP, matched the manifest checksum, installed through outRage, passed the same 37-file audit and builtin module check, and ran the independently CI-compiled canonical D3D11 probe under a cleared environment (no inherited Wine/DYLD overrides or Homebrew PATH). Hardware feature level 11.0 passed on macOS 27.0.1, M2 Pro, 16 GiB. Fresh prefix initialization warned that syswow64/rundll32 was unavailable; this did not stop the x86-64 probe and is not evidence of working 32-bit execution. Rockstar installer/login/gameplay are separate proof gates.
+- **Signing boundary:** strict signature verification passes for the 36 relocated engine/dependency Mach-O files. The unmodified upstream DXMT `winemetal.so` is unsigned. It loads in this developer runtime; complete runtime release signing remains unfinished and must not be inferred from the ad-hoc app/engine checks.
+
+- [Runtime Build #5](https://github.com/Pajic-LLC/outRage/actions/runs/40179533510) built and installed its package, then failed before the portability audit could run: whitespace-based `awk` parsing truncated `Library/Application Support` to `Library/Application`. DXMT and Win32 gates were skipped. The workflow now parses the tab-separated runtime listing by tabs; a real Mach-O regression checks both spaced paths and audit failure propagation.
+- [Runtime Dependencies #1](https://github.com/Pajic-LLC/outRage/actions/runs/40179693905) failed at the GnuTLS install-time relink after selecting ARM Homebrew Brotli/Zstd libraries for an x86-64 output. The builder now restricts pkg-config discovery to the pinned prefix and explicitly disables those unbundled optional compression dependencies. The isolation fix is now proven by Runtime Dependencies #2 at `e2b7f96`; dependency-integrated packaging/launcher proof remains separate.
+- A native Mach-O relocation regression now proves transitive dependency loading through `dlopen` after moving the runtime and deleting the dependency build prefix, with no `DYLD_*` overrides. It exposed another whitespace truncation in `otool -L` parsing; bundling/auditing now strip metadata rather than splitting dependency names on spaces. This proves relocation mechanics on the host architecture, not x86-64 launcher compatibility.
+- Normal CI for the first fix passed, and the native CLI/host release builds pass locally. The later complete runtime proof is recorded below.
+- Rosetta was initially unavailable on the local M2 Pro. The owner explicitly approved installation and Apple license acceptance; Apple's installer completed successfully and a real x86-64 execution probe now passes. This Mac has 16 GiB unified memory and Metal. The installed Command Line Tools lack the Swift `Testing` module; all 79 Swift tests pass on the CI Xcode toolchain, as do both separate release-product builds and the native runtime regressions. The CI runner also reports Rosetta and an Apple Paravirtual Metal device. These facts establish test-host capability, not launcher compatibility or gameplay.
 
 ---
 
@@ -601,11 +617,11 @@ Acceptance criteria:
 - [x] Swift regression suite.
 - [x] Release CLI/host build in CI.
 
-Do not reopen this milestone for title-specific failures unless they reveal a generic architectural defect.
+Preserve this foundation. Add targeted Rockstar/RAGE fixes when a demonstrated title failure requires them, with regression coverage at the appropriate layer.
 
 ## M2 — Launcher-capable self-contained runtime
 
-**Status: 🟡 CURRENT.**
+**Status: ✅ Runtime substrate exit gate passed; vendor compatibility remains M3/M4 work.**
 
 Goal: produce a packaged runtime capable of both game rendering and modern authenticated launcher operation on a clean end-user Mac.
 
@@ -622,14 +638,14 @@ Tasks:
 - [x] Add native-title winemac identity patcher with anchor/idempotence tests.
 - [x] Add pinned x86-64 dependency builder.
 - [x] Add runtime dylib relocation/signing tool.
-- [ ] Resolve the current dependency CI result and fix any real build errors.
-- [ ] Integrate the pinned GnuTLS/FreeType dependency prefix into the engine build rather than keeping the final launcher runtime configured `--without-gnutls --without-freetype`.
-- [ ] Bundle all required dependency dylibs into the runtime.
-- [ ] Re-run portability audit on the exact dependency-integrated package.
-- [ ] Require packaged DXMT smoke to pass.
-- [ ] Require packaged Win32 PE smoke to pass.
-- [ ] Preserve runtime signing after relocation.
-- [ ] Upload the exact passing artifact.
+- [x] Resolve the original dependency CI failure: [Runtime Dependencies #2](https://github.com/Pajic-LLC/outRage/actions/runs/40181834226) passed at `e2b7f96`, building/installing all five required library families and verifying x86-64 architecture. The integrated runtime proof is recorded below.
+- [x] Prove the dependency-integrated engine build with GnuTLS/FreeType and relocatable `@rpath` SONAMEs.
+- [x] Bundle the locked dependency dylibs into the real runtime package.
+- [x] Pass the portability audit on the exact installed package (CI and local M2 Pro).
+- [x] Pass packaged DXMT module loading and hardware D3D11 device creation (CI and local M2 Pro).
+- [x] Pass packaged Win32 PE execution in CI.
+- [x] Sign relocated runtime Mach-O files.
+- [x] Upload the exact passing artifact from [run 40187466116](https://github.com/Pajic-LLC/outRage/actions/runs/40187466116).
 
 **M2 exit gate:** one uploaded package installs from its own manifest on a clean CI home, has no forbidden build-machine dynamic-library references, executes a real Win32 x86-64 program, and proves the DXMT builtin path initializes.
 
@@ -666,9 +682,9 @@ Tasks/acceptance:
 
 **Status: ⬜ next major product milestone.**
 
-Goal: prove the entire architecture on one difficult, real, owned Windows title.
+Goal: prove GTA V Legacy Story Mode through the official Rockstar Games Launcher, legitimate ownership, DXMT/Metal, and a native title app.
 
-The current intended Tier-3 reference scenario is a **Rockstar Launcher / GTA V-class flow** because it exercises authentication, a managed launcher, a title bootstrap, a large install, updates, process handoff, Direct3D rendering, and persistent launcher state. This is a compatibility target, not a promise of unsupported online/anti-cheat functionality.
+The current intended Tier-3 reference scenario is **Rockstar Games Launcher / GTA V Legacy Story Mode** because it exercises authentication, a managed launcher, a title bootstrap, a large install, updates, process handoff, Direct3D rendering, and persistent launcher state. This is a compatibility target, not a promise of unsupported online/anti-cheat functionality.
 
 Reference-title tasks:
 
@@ -689,7 +705,7 @@ Reference-title tasks:
 - [ ] Quit and relaunch.
 - [ ] Reboot macOS and relaunch.
 - [ ] Update the game and verify new build fingerprint/cache behavior.
-- [ ] Capture every compatibility workaround in profile data when possible; only generic defects belong in core code.
+- [ ] Capture compatibility workarounds in profiles when possible; implement targeted Rockstar/RAGE fixes when the evidence requires runtime or host changes.
 
 **M4 exit gate:** the reference title can be installed and repeatedly launched from its macOS `.app` into real gameplay on supported hardware with the vendor's ownership/authentication intact.
 
@@ -828,7 +844,7 @@ Final matrix should include at minimum:
 
 1. checks the Swift version;
 2. syntax-checks runtime shell tooling;
-3. compile-checks and tests the native-identity patcher;
+3. compile-checks and tests the native-identity patcher, then exercises the real workflow audit and native dylib relocation/load/signature regressions;
 4. runs `swift test`;
 5. builds release `outrage` and `outrage-host`.
 
@@ -848,10 +864,11 @@ This lane exists so dependency failures can fail faster than a full compatibilit
 2. install that package through `outrage runtime-install`;
 3. resolve the installed runtime;
 4. audit runtime dylib self-containment;
-5. run DXMT initialization smoke;
-6. run real Windows execution smoke;
-7. inspect/checksum the package;
-8. upload only after the gates pass.
+5. run DXMT builtin-module smoke;
+6. create a real D3D11 device through the installed runtime;
+7. run real Windows execution smoke;
+8. inspect/checksum the package;
+9. upload only after the gates pass.
 
 ### Expensive-build rule
 
@@ -894,7 +911,8 @@ Useful local baseline:
 
 ```bash
 swift test
-swift build -c release --product outrage --product outrage-host
+swift build -c release --product outrage
+swift build -c release --product outrage-host
 swift run outrage doctor
 swift run outrage validate Profiles/bootstrap.json
 ```
@@ -907,7 +925,7 @@ The CLI is a developer surface. The final user experience must not require it.
 
 Treat these as current project decisions. Change them only with an explicit reason and update this document when doing so.
 
-1. **Core remains title-agnostic.** Put title quirks in profiles whenever reasonably possible.
+1. **Product scope is Rockstar/RAGE.** Prefer profiles for title policy and reusable shared infrastructure, but allow measured, targeted RAGE compatibility code when a recipe is insufficient.
 2. **One canonical runtime preparation path.** Direct, bootstrap, and managed-launcher flows must not drift.
 3. **Legitimate auth/entitlement stays intact.** outRage orchestrates; it does not impersonate ownership.
 4. **Explicit profile configuration beats defaults.** Typed convenience/performance policy must not silently override a deliberate title environment setting.
@@ -920,7 +938,7 @@ Treat these as current project decisions. Change them only with an explicit reas
 11. **Cache identity follows target build identity.** A title update must not blindly reuse incompatible build state.
 12. **Compatibility updates are verifiable.** Runtime packages and profile updates have integrity/authenticity gates.
 13. **No hidden credential collection.** Logs/support bundles must be designed around this constraint.
-14. **The first difficult title validates architecture, not hard-codes it.** If a workaround is unique to one title, prefer profile data or a narrowly defined generic extension point.
+14. **GTA V Legacy Story Mode is the first proof target.** Prefer profile data for its policy; use narrowly scoped Rockstar/RAGE fixes when real failures require code. Do not trade title correctness for hypothetical generality.
 
 ---
 
@@ -999,20 +1017,15 @@ When a long build is running, parallel work is allowed only if it does not inval
 
 This is the queue to follow unless new evidence makes a higher item invalid.
 
-1. **Resolve Runtime Dependencies #1.** If it fails, use the exact build/log error to fix GMP/Nettle/GnuTLS/FreeType construction; do not guess.
-2. **Resolve Runtime Build #5.** Capture whether native identity + package audit + DXMT/PE smoke succeed on the package it produces.
-3. **Integrate the pinned x86-64 dependency prefix into the real engine/runtime build.** The launcher-ready runtime cannot remain configured without GnuTLS/FreeType.
-4. **Bundle/relocate/re-sign the dependency dylibs into the runtime package.**
-5. **Run the complete M2 gate on the dependency-integrated package:** install its own ZIP, portability audit, DXMT smoke, Win32 PE smoke.
-6. **Create the first real Tier-3 reference title profile.** Keep product/process paths and launch policy in profile data.
-7. **Run a real managed-launcher first-run:** installer → login → game install into mapped storage → launch.
-8. **Prove title bootstrap if available, otherwise launcher fallback.** Do not invent undocumented entitlement shortcuts.
-9. **Prove process handoff and real gameplay through Metal.** Record every failure at the layer where it occurs.
-10. **Iterate M3/M4 until warm launch, cold reboot launch, update, quit, input/audio/network/display, and diagnostics pass.**
-11. **Complete native-feel UX and support/recovery flows.**
-12. **Benchmark/stability pass.**
-13. **Release signing/notarization/license audit.**
-14. **Run the M9 fresh-machine matrix on the exact release candidate.**
+1. **Validate the selected Enhanced D3D12 path.** The owner confirmed the Rockstar library is visible, started Enhanced's official download, located Legacy in Settings, then explicitly selected Enhanced as the active target. Preserve the working signed-in session. See docs/GTA_V_ENHANCED.md for the isolated Mullion candidate and proof gates.
+2. **Finish the official Enhanced download and map its storage safely.** The initial partial download is in the existing Rockstar prefix. Do not move files while the download is active; verify actual required/free space before resuming.
+3. **Prove the isolated D3D12 backend before switching the title session.** The pinned Mullion v0.4 package passes the local 37-file portability audit; hardware-copy, shader/presentation, and game gates remain separate. Legacy's prior DXMT proof is preserved.
+4. **Promote a reproducible backend and remove temporary launcher scaffolding.** Preserve source/archive provenance and licenses. The FOSS CEF process patch passed its isolated fixture but has not replaced the working vendor-helper trampoline session.
+5. **Prove legitimate bootstrap/handoff, Metal gameplay, input/audio/saves, clean quit, repeat launch, reboot launch, and updates.** No unverified title bootstrap or product switches are configured.
+6. **Complete native branding and UX.** Process-discovery pipe deadlock is fixed, with a 20,000-row regression and 80-test CI proof. Optional managedLauncherDisplayName prevents using the game title for vendor setup commands; residual Wine Dock/window branding and the host's handling of updater-spawned launcher processes still need proof.
+7. **Complete recovery/diagnostics, performance/stability, release signing/notarization/license audit, and M9 fresh-machine acceptance.**
+
+The complete runtime gate already passed at `659a9fa` ([run 40187466116](https://github.com/Pajic-LLC/outRage/actions/runs/40187466116)). Reuse that artifact unless relevant runtime inputs change; documentation and independent probe-workflow changes do not require rebuilding the engine.
 
 ---
 

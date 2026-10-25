@@ -11,6 +11,7 @@ public enum GraphicsBackend: String, Codable, Sendable, CaseIterable {
     case auto
     case metal
     case dxmt
+    case mullion
     case d3dMetal
     case dxvk
     case vkd3d

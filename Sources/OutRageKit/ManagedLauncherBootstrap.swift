@@ -91,6 +91,7 @@ public enum ManagedLauncherBootstrap {
             executableURL: installerURL,
             arguments: installerArguments,
             suffix: ".bootstrap",
+            displayName: profile.acquisition?.managedLauncherDisplayName,
             prepared: prepared
         )
     }
@@ -171,6 +172,7 @@ public enum ManagedLauncherBootstrap {
             executableURL: launcherURL,
             arguments: launcherArguments,
             suffix: ".launcher",
+            displayName: profile.acquisition?.managedLauncherDisplayName,
             prepared: prepared
         )
         command = try tuneForInstalledTarget(
@@ -224,11 +226,12 @@ public enum ManagedLauncherBootstrap {
         executableURL: URL,
         arguments: [String],
         suffix: String,
+        displayName: String? = nil,
         prepared: PreparedCompatibilityRuntime
     ) throws -> LaunchCommand {
         let plan = LaunchPlan(
             profileID: profile.id + suffix,
-            displayName: profile.displayName,
+            displayName: displayName ?? profile.displayName,
             executableURL: executableURL,
             workingDirectoryURL: executableURL.deletingLastPathComponent(),
             runtime: .compatibility,

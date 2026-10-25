@@ -1,0 +1,77 @@
+name: Runtime Hardware Probes
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Windows probe compiler
+        run: brew list --formula mingw-w64 >/dev/null 2>&1 || brew install mingw-w64
+      - name: Build the canonical D3D11 probe for hardware validation
+        run: |
+          mkdir -p "$RUNNER_TEMP/runtime-probes"
+          python3 - "$RUNNER_TEMP/runtime-probes" <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+          script = Path("Tools/runtime/smoke-d3d11-runtime.sh").read_text()
+          match = re.search(r'''cat > "\$WORK/d3d11-smoke.c" <<'EOF'\n(.*?)\nEOF\n''', script, re.S)
+          if match is None:
+              raise SystemExit("canonical D3D11 probe source not found")
+          (Path(sys.argv[1]) / "d3d11-smoke.c").write_text(match.group(1) + "\n")
+          PY
+          x86_64-w64-mingw32-gcc -O2 -s \
+            "$RUNNER_TEMP/runtime-probes/d3d11-smoke.c" \
+            -o "$RUNNER_TEMP/runtime-probes/d3d11-smoke.exe" \
+            -ld3d11 -ldxgi -ldxguid -lole32 -luuid
+          file "$RUNNER_TEMP/runtime-probes/d3d11-smoke.exe" | grep -q 'PE32+.*x86-64'
+          cp Tools/runtime/smoke/d3d12-copy.c "$RUNNER_TEMP/runtime-probes/"
+          x86_64-w64-mingw32-gcc -O2 -Wall -Wextra -Werror \
+            Tools/runtime/smoke/d3d12-copy.c -o "$RUNNER_TEMP/runtime-probes/d3d12-copy.exe" \
+            -ld3d12 -ldxgi -ldxguid -luuid
+          cp Tools/runtime/smoke/d3d12-render.c "$RUNNER_TEMP/runtime-probes/"
+          x86_64-w64-mingw32-gcc -O2 -Wall -Wextra -Werror \
+            Tools/runtime/smoke/d3d12-render.c -o "$RUNNER_TEMP/runtime-probes/d3d12-render.exe" \
+            -ld3d12 -ld3dcompiler -ldxguid -luuid
+          cp Tools/runtime/smoke/d3d11-context-state.c "$RUNNER_TEMP/runtime-probes/"
+          x86_64-w64-mingw32-gcc -O2 -s \
+            "$RUNNER_TEMP/runtime-probes/d3d11-context-state.c" \
+            -o "$RUNNER_TEMP/runtime-probes/d3d11-context-state.exe" \
+            -ld3d11 -ldxgi -ldxguid -lole32 -luuid
+          file "$RUNNER_TEMP/runtime-probes/d3d11-context-state.exe" | grep -q 'PE32+.*x86-64'
+          cp Tools/runtime/smoke/window-state.c "$RUNNER_TEMP/runtime-probes/"
+          x86_64-w64-mingw32-gcc -O2 -s \
+            "$RUNNER_TEMP/runtime-probes/window-state.c" \
+            -o "$RUNNER_TEMP/runtime-probes/window-state.exe" -luser32
+          file "$RUNNER_TEMP/runtime-probes/window-state.exe" | grep -q 'PE32+.*x86-64'
+          clang -std=c11 -Wall -Wextra -Werror Tools/runtime/smoke/test-cef-command.c -o "$RUNNER_TEMP/test-cef-command"
+          "$RUNNER_TEMP/test-cef-command"
+          cp Tools/runtime/smoke/cef-command.h Tools/runtime/smoke/cef-renderer-wrapper.c "$RUNNER_TEMP/runtime-probes/"
+          x86_64-w64-mingw32-gcc -O2 -Wall -Wextra -Werror -municode -mwindows \
+            Tools/runtime/smoke/cef-renderer-wrapper.c \
+            -o "$RUNNER_TEMP/runtime-probes/cef-renderer-wrapper.exe"
+          file "$RUNNER_TEMP/runtime-probes/cef-renderer-wrapper.exe" | grep -q 'PE32+.*x86-64'
+          cp Tools/runtime/smoke/d2d-window.cpp "$RUNNER_TEMP/runtime-probes/"
+          x86_64-w64-mingw32-g++ -O2 -Wall -Wextra -Werror -static-libgcc -static-libstdc++ \
+            Tools/runtime/smoke/d2d-window.cpp -o "$RUNNER_TEMP/runtime-probes/d2d-window.exe" -ld2d1 -lole32 -luuid
+          cp Tools/runtime/smoke/cef-process-probe.c "$RUNNER_TEMP/runtime-probes/"
+          x86_64-w64-mingw32-gcc -O2 -Wall -Wextra -Werror -municode \
+            Tools/runtime/smoke/cef-process-probe.c -o "$RUNNER_TEMP/runtime-probes/cef-process-probe.exe"
+          clang -arch x86_64 -dynamiclib -fobjc-arc -Wall -Wextra -Werror -mmacosx-version-min=14.0 \
+            Tools/runtime/smoke/winemac-window-observer.m -framework AppKit -framework QuartzCore \
+            -o "$RUNNER_TEMP/runtime-probes/window-observer.dylib"
+          cd "$RUNNER_TEMP/runtime-probes"
+          shasum -a 256 *.c *.h *.cpp *.exe *.dylib > SHA256SUMS
+      - name: Upload developer hardware probe
+        uses: actions/upload-artifact@v7
+        with:
+          name: outrage-runtime-hardware-probes
+          path: ${{ runner.temp }}/runtime-probes/
+          retention-days: 7

@@ -4,13 +4,13 @@ This document explains the current code-facing architecture. For product goals, 
 
 ## Design principle
 
-outRage should make a supported Windows title behave like a normal macOS application while keeping the compatibility implementation generic and testable.
+outRage makes Rockstar RAGE-engine games feel like native Apple Silicon Mac games. GTA V Legacy Story Mode is the first target; see [the product vision](PRODUCT_VISION.md). Shared infrastructure stays reusable and testable, but product scope is Rockstar/RAGE.
 
 The core rule is:
 
 > **Title-specific behavior belongs in a profile whenever possible; runtime preparation and lifecycle behavior belong in shared code.**
 
-The host must not grow into a collection of game-name conditionals.
+Prefer declarative title recipes where they express the real behavior. Targeted Rockstar/RAGE compatibility code is appropriate when evidence shows a profile alone cannot solve the issue; do not let a generic abstraction obstruct the supported title path.
 
 ## Products
 
@@ -115,6 +115,10 @@ A compatibility runtime is a versioned package described by a `RuntimeDescriptor
 
 The current Apple Silicon path is an **x86-64 compatibility engine executed through Rosetta** with a Metal-oriented graphics backend. The current FOSS Metal builder pins a CodeWeavers/CrossOver source package and DXMT archive by version and SHA-256.
 
+The builder constructs the pinned x86-64 dependency prefix automatically, or accepts `--dependency-prefix` to reuse an existing locked prefix. GnuTLS and FreeType are required at configure time. Their configured `dlopen` names are rewritten to `@rpath`, validated against the actual dependency files, and bundled with the engine under `lib/outrage` before packaging. Relocation adds module-relative rpaths and re-signs modified Mach-O files. The package includes the dependency lock under `share/outrage`.
+
+This is implemented plumbing, not proof that Rockstar Launcher authentication works. The final dependency-integrated artifact still must pass every package gate and a real launcher test.
+
 ### Runtime lifecycle
 
 1. Discover installed runtimes through `RuntimeCatalog`.
@@ -168,7 +172,7 @@ Runtime tooling therefore includes:
 - code-signing of modified runtime binaries;
 - package install verification;
 - real Win32 execution smoke;
-- DXMT initialization smoke.
+- DXMT builtin-module smoke and actual D3D11 device-creation smoke.
 
 A package should only be uploaded after the exact installed package passes the applicable gates.
 

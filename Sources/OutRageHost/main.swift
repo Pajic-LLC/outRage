@@ -247,6 +247,7 @@ struct OutRageHostApp: App {
                 outputURL: paths.logURL(for: profile.id)
             )
             runningProcess = running
+            handOffActivation(to: running)
             running.process.terminationHandler = { _ in
                 DispatchQueue.main.async {
                     handleManagedInstallerExit(profile, paths: paths)
@@ -318,6 +319,7 @@ struct OutRageHostApp: App {
             outputURL: paths.logURL(for: profile.id)
         )
         runningProcess = launcher
+        handOffActivation(to: launcher)
 
         Task { @MainActor in
             do {
@@ -371,6 +373,34 @@ struct OutRageHostApp: App {
         panel.allowsMultipleSelection = false
         panel.canCreateDirectories = false
         return panel.runModal() == .OK ? panel.url : nil
+    }
+}
+
+/// Wine uses cooperative activation on macOS 14 and later. A GUI launcher
+/// started with Process does not receive the native host's activation right
+/// automatically. Yield only while this user-opened host is the active app.
+@MainActor
+private func handOffActivation(to running: RunningProcess) {
+    Task { @MainActor in
+        for _ in 0..<300 {
+            guard running.isRunning else { return }
+            if NSApplication.shared.isActive,
+               let application = NSRunningApplication(processIdentifier: running.processIdentifier),
+               application.activationPolicy == .regular {
+                if #available(macOS 14.0, *) {
+                    NSApplication.shared.yieldActivation(to: application)
+                    _ = application.activate(from: .current, options: [.activateAllWindows])
+                } else {
+                    _ = application.activate(options: [.activateAllWindows])
+                }
+                return
+            }
+            do {
+                try await Task.sleep(for: .milliseconds(100))
+            } catch {
+                return
+            }
+        }
     }
 }
 

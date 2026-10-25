@@ -21,6 +21,13 @@ public enum GraphicsBackendCachePreparer {
             }
         case .auto, .metal, .d3dMetal, .dxvk, .vkd3d:
             break
+        case .mullion:
+            for relative in ["mullion-shaders", "mullion-logs"] {
+                try fileManager.createDirectory(
+                    at: context.cacheRoot.appendingPathComponent(relative, isDirectory: true),
+                    withIntermediateDirectories: true
+                )
+            }
         }
     }
 }

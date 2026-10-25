@@ -58,7 +58,7 @@ swift run -c release outrage runtime-build-metal \
     "$ENGINE_ROOT" \
     "$DXMT_ROOT" \
     "outrage-metal-x86_64" \
-    "26.3.0+v0.80" \
+    "26.3.0+v0.80-launcher.1" \
     "$OUTPUT"
 
 printf 'validated-runtime-package: %s\n' "$OUTPUT"
