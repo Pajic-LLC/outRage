@@ -31,17 +31,17 @@ public enum LaunchSessionBuilder {
         try paths.ensureTargetDirectories(for: profile.id, fileManager: fileManager)
 
         let targetRoot = paths.targetURL(for: profile.id)
-        let plan = try LaunchPlanner.makePlan(
-            profile: profile,
-            targetRoot: targetRoot,
-            host: host
-        )
-
-        guard fileManager.fileExists(atPath: plan.executableURL.path) else {
-            throw LaunchSessionError.targetExecutableMissing(plan.executableURL.path)
+        let targetExecutable = targetRoot.appendingPathComponent(profile.executable)
+        guard fileManager.fileExists(atPath: targetExecutable.path) else {
+            throw LaunchSessionError.targetExecutableMissing(targetExecutable.path)
         }
 
         if profile.runtime == .native {
+            let plan = try LaunchPlanner.makePlan(
+                profile: profile,
+                targetRoot: targetRoot,
+                host: host
+            )
             let command = try LaunchCommandBuilder.make(plan: plan)
             return LaunchSession(
                 profile: profile,
@@ -62,6 +62,22 @@ public enum LaunchSessionBuilder {
             throw LaunchSessionError.runtimeExecutableMissing(runtimeExecutable.path)
         }
 
+        var resolvedProfile = profile
+        resolvedProfile.cpu = try BackendResolver.resolveCPU(
+            requested: profile.cpu,
+            runtime: installed.descriptor,
+            host: host
+        )
+        resolvedProfile.graphics = try BackendResolver.resolveGraphics(
+            requested: profile.graphics,
+            runtime: installed.descriptor
+        )
+
+        let plan = try LaunchPlanner.makePlan(
+            profile: resolvedProfile,
+            targetRoot: targetRoot,
+            host: host
+        )
         let context = RuntimeLaunchContext(
             runtimeRoot: installed.rootURL,
             targetRoot: targetRoot,
