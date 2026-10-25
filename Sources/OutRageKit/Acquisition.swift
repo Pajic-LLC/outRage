@@ -11,6 +11,7 @@ public struct AcquisitionDescriptor: Codable, Equatable, Sendable {
     public var productIdentifier: String?
     public var installerURL: URL?
     public var installerSHA256: String?
+    public var installerArguments: [String]?
     public var steamAppID: Int?
     public var steamBranch: String?
 
@@ -19,6 +20,7 @@ public struct AcquisitionDescriptor: Codable, Equatable, Sendable {
         productIdentifier: String? = nil,
         installerURL: URL? = nil,
         installerSHA256: String? = nil,
+        installerArguments: [String]? = nil,
         steamAppID: Int? = nil,
         steamBranch: String? = nil
     ) {
@@ -26,6 +28,7 @@ public struct AcquisitionDescriptor: Codable, Equatable, Sendable {
         self.productIdentifier = productIdentifier
         self.installerURL = installerURL
         self.installerSHA256 = installerSHA256
+        self.installerArguments = installerArguments
         self.steamAppID = steamAppID
         self.steamBranch = steamBranch
     }
@@ -51,6 +54,7 @@ public enum AcquisitionAction: Equatable, Sendable {
         sourceURL: URL,
         expectedSHA256: String?,
         installerDestinationURL: URL,
+        installerArguments: [String],
         targetRoot: URL
     )
     case steam(appID: Int, branch: String?, targetRoot: URL)
@@ -79,6 +83,7 @@ public enum AcquisitionPlanner {
                 sourceURL: sourceURL,
                 expectedSHA256: acquisition.installerSHA256,
                 installerDestinationURL: installerDestination,
+                installerArguments: acquisition.installerArguments ?? [],
                 targetRoot: targetRoot
             )
         case .steam:
