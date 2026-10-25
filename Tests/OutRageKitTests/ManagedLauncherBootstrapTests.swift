@@ -62,7 +62,10 @@ import Testing
         fileManager: fm
     )
 
-    #expect(command.executableURL == runtimeExecutable)
+    #expect(
+        command.executableURL.resolvingSymlinksInPath() ==
+        runtimeExecutable.resolvingSymlinksInPath()
+    )
     #expect(command.arguments == [launcher.path, "--resume"])
     #expect(command.environment["OUTRAGE_BUILD_CACHE_ROOT"] != nil)
     #expect(command.environment["OUTRAGE_SHADER_CACHE_PATH"] != nil)
