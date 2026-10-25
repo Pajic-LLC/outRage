@@ -107,6 +107,14 @@ struct OutRageHostApp: App {
 
         switch acquisition.kind {
         case .managedLauncher:
+            if let launcherURL = try ManagedLauncherBootstrap.installedLauncherURL(
+                profile: profile,
+                paths: paths
+            ), FileManager.default.fileExists(atPath: launcherURL.path) {
+                try runInstalledLauncher(profile, paths: paths)
+                return
+            }
+
             state = .downloadingSetup(profile.displayName)
             let installerURL = try await ManagedLauncherBootstrap.prepareInstaller(
                 profile: profile,
@@ -126,16 +134,7 @@ struct OutRageHostApp: App {
             runningProcess = running
             running.process.terminationHandler = { _ in
                 DispatchQueue.main.async {
-                    let executableURL = paths.executableURL(for: profile)
-                    if FileManager.default.fileExists(atPath: executableURL.path) {
-                        do {
-                            try launchTarget(profile, paths: paths)
-                        } catch {
-                            state = .error(String(describing: error))
-                        }
-                    } else {
-                        state = .needsSetup("Finish setup in the launcher, then open this app again.")
-                    }
+                    handleManagedInstallerExit(profile, paths: paths)
                 }
             }
 
@@ -154,6 +153,64 @@ struct OutRageHostApp: App {
                 paths: paths
             )
             try launchTarget(profile, paths: paths)
+        }
+    }
+
+    @MainActor
+    private func handleManagedInstallerExit(
+        _ profile: RuntimeProfile,
+        paths: RuntimePaths
+    ) {
+        if FileManager.default.fileExists(atPath: paths.executableURL(for: profile).path) {
+            do {
+                try launchTarget(profile, paths: paths)
+            } catch {
+                state = .error(String(describing: error))
+            }
+            return
+        }
+
+        do {
+            if let launcherURL = try ManagedLauncherBootstrap.installedLauncherURL(
+                profile: profile,
+                paths: paths
+            ), FileManager.default.fileExists(atPath: launcherURL.path) {
+                try runInstalledLauncher(profile, paths: paths)
+            } else {
+                state = .needsSetup("Launcher setup did not finish successfully.")
+            }
+        } catch {
+            state = .error(String(describing: error))
+        }
+    }
+
+    @MainActor
+    private func runInstalledLauncher(
+        _ profile: RuntimeProfile,
+        paths: RuntimePaths
+    ) throws {
+        state = .runningSetup(profile.displayName)
+        let command = try ManagedLauncherBootstrap.makeInstalledLauncherCommand(
+            profile: profile,
+            paths: paths
+        )
+        let running = try ProcessRunner.start(
+            command,
+            outputURL: paths.logURL(for: profile.id)
+        )
+        runningProcess = running
+        running.process.terminationHandler = { _ in
+            DispatchQueue.main.async {
+                if FileManager.default.fileExists(atPath: paths.executableURL(for: profile).path) {
+                    do {
+                        try launchTarget(profile, paths: paths)
+                    } catch {
+                        state = .error(String(describing: error))
+                    }
+                } else {
+                    state = .needsSetup("Finish installing the target in the launcher, then open this app again.")
+                }
+            }
         }
     }
 
