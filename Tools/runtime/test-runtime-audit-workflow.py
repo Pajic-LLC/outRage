@@ -34,6 +34,15 @@ class RuntimeAuditWorkflowTests(unittest.TestCase):
                  "-Wl,-install_name,@rpath/libsmoke.dylib"],
                 check=True,
             )
+            # DXMT/native dependencies may contain multiple Mach-O slices.
+            # otool prints an additional absolute-path header for each slice.
+            x86 = work / "x86.dylib"
+            subprocess.run(["xcrun", "clang", "-arch", "x86_64", "-dynamiclib", str(source), "-o", str(x86),
+                            "-Wl,-install_name,@rpath/libsmoke.dylib"], check=True)
+            arm = work / "arm.dylib"
+            subprocess.run(["xcrun", "clang", "-arch", "arm64", "-dynamiclib", str(source), "-o", str(arm),
+                            "-Wl,-install_name,@rpath/libsmoke.dylib"], check=True)
+            subprocess.run(["lipo", "-create", str(x86), str(arm), "-output", str(runtime / "libuniversal.dylib")], check=True)
             # Stand in only for catalog discovery; use the real workflow parser
             # and the real Mach-O auditor so weakening/skipping the gate fails.
             swift = work / "swift"
@@ -46,7 +55,7 @@ class RuntimeAuditWorkflowTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn("runtime dylib audit passed", result.stdout)
 
-            subprocess.run(["install_name_tool", "-id", "/opt/homebrew/lib/libsmoke.dylib", str(library)], check=True)
+            subprocess.run(["install_name_tool", "-id", "/opt/homebrew/lib/libsmoke.dylib", str(runtime / "libuniversal.dylib")], check=True)
             result = subprocess.run(["bash", "-e", "-o", "pipefail", "-c", script],
                                     cwd=REPO, env=env, capture_output=True, text=True)
             self.assertNotEqual(result.returncode, 0)
