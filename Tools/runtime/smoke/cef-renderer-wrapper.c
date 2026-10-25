@@ -3,8 +3,12 @@
  * executable. No auth/entitlement/security switches are added or removed.
  * CEF IPC handles and the raw vendor command line must survive the trampoline.
  */
+#ifndef UNICODE
 #define UNICODE
+#endif
+#ifndef _UNICODE
 #define _UNICODE
+#endif
 #include <windows.h>
 #include <wchar.h>
 #include "cef-command.h"

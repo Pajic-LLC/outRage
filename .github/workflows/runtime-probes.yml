@@ -60,7 +60,7 @@ jobs:
             -o "$RUNNER_TEMP/runtime-probes/cef-renderer-wrapper.exe"
           file "$RUNNER_TEMP/runtime-probes/cef-renderer-wrapper.exe" | grep -q 'PE32+.*x86-64'
           cd "$RUNNER_TEMP/runtime-probes"
-          shasum -a 256 *.c *.exe > SHA256SUMS
+          shasum -a 256 *.c *.h *.exe > SHA256SUMS
       - name: Upload developer hardware probe
         uses: actions/upload-artifact@v7
         with:
