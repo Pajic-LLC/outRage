@@ -10,6 +10,7 @@ public struct RuntimePaths: Sendable {
     public var runtimesURL: URL { baseURL.appendingPathComponent("Runtimes", isDirectory: true) }
     public var profilesURL: URL { baseURL.appendingPathComponent("Profiles", isDirectory: true) }
     public var targetsURL: URL { baseURL.appendingPathComponent("Targets", isDirectory: true) }
+    public var prefixesURL: URL { baseURL.appendingPathComponent("Prefixes", isDirectory: true) }
     public var cacheURL: URL { baseURL.appendingPathComponent("Cache", isDirectory: true) }
     public var logsURL: URL { baseURL.appendingPathComponent("Logs", isDirectory: true) }
 
@@ -17,8 +18,26 @@ public struct RuntimePaths: Sendable {
         targetsURL.appendingPathComponent(profileID, isDirectory: true)
     }
 
+    public func prefixURL(for profileID: String) -> URL {
+        prefixesURL.appendingPathComponent(profileID, isDirectory: true)
+    }
+
+    public func cacheURL(for profileID: String) -> URL {
+        cacheURL.appendingPathComponent(profileID, isDirectory: true)
+    }
+
+    public func logURL(for profileID: String) -> URL {
+        logsURL.appendingPathComponent(profileID + ".log")
+    }
+
     public func ensureDirectories(fileManager: FileManager = .default) throws {
-        for url in [baseURL, runtimesURL, profilesURL, targetsURL, cacheURL, logsURL] {
+        for url in [baseURL, runtimesURL, profilesURL, targetsURL, prefixesURL, cacheURL, logsURL] {
+            try fileManager.createDirectory(at: url, withIntermediateDirectories: true)
+        }
+    }
+
+    public func ensureTargetDirectories(for profileID: String, fileManager: FileManager = .default) throws {
+        for url in [targetURL(for: profileID), prefixURL(for: profileID), cacheURL(for: profileID)] {
             try fileManager.createDirectory(at: url, withIntermediateDirectories: true)
         }
     }
