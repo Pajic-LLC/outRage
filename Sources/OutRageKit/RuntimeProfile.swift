@@ -48,6 +48,7 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
     public var arguments: [String]
     public var environment: [String: String]
     public var pathMappings: [RuntimePathMapping]?
+    public var processMatch: String?
     public var acquisition: AcquisitionDescriptor?
 
     public init(
@@ -67,6 +68,7 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
         arguments: [String] = [],
         environment: [String: String] = [:],
         pathMappings: [RuntimePathMapping]? = nil,
+        processMatch: String? = nil,
         acquisition: AcquisitionDescriptor? = nil
     ) {
         self.schemaVersion = schemaVersion
@@ -85,11 +87,20 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
         self.arguments = arguments
         self.environment = environment
         self.pathMappings = pathMappings
+        self.processMatch = processMatch
         self.acquisition = acquisition
     }
 
     public var resolvedExecutableScope: ExecutableScope {
         executableScope ?? .target
+    }
+
+    public var resolvedProcessMatch: String {
+        if let processMatch,
+           !processMatch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return processMatch
+        }
+        return URL(fileURLWithPath: executable).lastPathComponent
     }
 
     public func validate() throws {
@@ -123,6 +134,14 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
                 throw ProfileValidationError.invalidRuntimeIdentifier(runtimeIdentifier)
             }
         }
+        if let processMatch {
+            let trimmed = processMatch.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty,
+                  !processMatch.contains("\n"),
+                  !processMatch.contains("\r") else {
+                throw ProfileValidationError.invalidProcessMatch(processMatch)
+            }
+        }
         if let runtimePackageSource {
             try runtimePackageSource.validate()
             if let runtimeIdentifier,
@@ -147,6 +166,7 @@ public enum ProfileValidationError: Error, Equatable, CustomStringConvertible {
     case workingDirectoryMustBeRelative(String)
     case prefixExecutableRequiresCompatibilityRuntime
     case invalidRuntimeIdentifier(String)
+    case invalidProcessMatch(String)
     case runtimePackageIdentifierMismatch(expected: String, actual: String)
 
     public var description: String {
@@ -159,6 +179,7 @@ public enum ProfileValidationError: Error, Equatable, CustomStringConvertible {
         case .workingDirectoryMustBeRelative(let value): return "Working directory must be relative: \(value)"
         case .prefixExecutableRequiresCompatibilityRuntime: return "Prefix executables require a compatibility runtime"
         case .invalidRuntimeIdentifier(let value): return "Invalid runtime identifier: \(value)"
+        case .invalidProcessMatch(let value): return "Invalid process match value: \(value)"
         case .runtimePackageIdentifierMismatch(let expected, let actual):
             return "Runtime package identifier mismatch: expected \(expected), found \(actual)"
         }
