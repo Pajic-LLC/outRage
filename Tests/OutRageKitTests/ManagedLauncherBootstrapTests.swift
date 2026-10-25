@@ -30,6 +30,9 @@ import Testing
     try fm.createDirectory(at: launcher.deletingLastPathComponent(), withIntermediateDirectories: true)
     try Data("launcher".utf8).write(to: launcher)
 
+    let target = paths.targetURL(for: "managed").appendingPathComponent("game.exe")
+    try Data("target-build".utf8).write(to: target)
+
     let profile = RuntimeProfile(
         id: "managed",
         displayName: "Managed",
@@ -61,4 +64,10 @@ import Testing
 
     #expect(command.executableURL == runtimeExecutable)
     #expect(command.arguments == [launcher.path, "--resume"])
+    #expect(command.environment["OUTRAGE_BUILD_CACHE_ROOT"] != nil)
+    #expect(command.environment["OUTRAGE_SHADER_CACHE_PATH"] != nil)
+
+    if let cacheRoot = command.environment["OUTRAGE_BUILD_CACHE_ROOT"] {
+        #expect(fm.fileExists(atPath: cacheRoot))
+    }
 }
