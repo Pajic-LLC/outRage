@@ -32,6 +32,7 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
     public var executable: String
     public var workingDirectory: String?
     public var runtime: RuntimeKind
+    public var runtimeIdentifier: String?
     public var launcher: LauncherMode
     public var cpu: CPUBackend
     public var graphics: GraphicsBackend
@@ -46,6 +47,7 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
         executable: String,
         workingDirectory: String? = nil,
         runtime: RuntimeKind = .compatibility,
+        runtimeIdentifier: String? = nil,
         launcher: LauncherMode = .managed,
         cpu: CPUBackend = .auto,
         graphics: GraphicsBackend = .auto,
@@ -59,6 +61,7 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
         self.executable = executable
         self.workingDirectory = workingDirectory
         self.runtime = runtime
+        self.runtimeIdentifier = runtimeIdentifier
         self.launcher = launcher
         self.cpu = cpu
         self.graphics = graphics
@@ -85,6 +88,12 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
         if let workingDirectory, workingDirectory.hasPrefix("/") {
             throw ProfileValidationError.workingDirectoryMustBeRelative(workingDirectory)
         }
+        if let runtimeIdentifier {
+            guard !runtimeIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  !runtimeIdentifier.contains("/") else {
+                throw ProfileValidationError.invalidRuntimeIdentifier(runtimeIdentifier)
+            }
+        }
     }
 }
 
@@ -95,6 +104,7 @@ public enum ProfileValidationError: Error, Equatable, CustomStringConvertible {
     case invalidBundleIdentifier(String)
     case executableMustBeRelative(String)
     case workingDirectoryMustBeRelative(String)
+    case invalidRuntimeIdentifier(String)
 
     public var description: String {
         switch self {
@@ -104,6 +114,7 @@ public enum ProfileValidationError: Error, Equatable, CustomStringConvertible {
         case .invalidBundleIdentifier(let value): return "Invalid bundle identifier: \(value)"
         case .executableMustBeRelative(let value): return "Executable path must be relative: \(value)"
         case .workingDirectoryMustBeRelative(let value): return "Working directory must be relative: \(value)"
+        case .invalidRuntimeIdentifier(let value): return "Invalid runtime identifier: \(value)"
         }
     }
 }
