@@ -64,8 +64,9 @@ public enum ManagedLauncherBootstrap {
             throw ManagedLauncherBootstrapError.wrongAcquisitionKind
         }
 
-        let prepared = try prepareRuntime(
+        let prepared = try RuntimeEnvironmentPreparer.prepare(
             profile: profile,
+            executableForProbe: installerURL,
             paths: paths,
             host: host,
             fileManager: fileManager
@@ -97,8 +98,9 @@ public enum ManagedLauncherBootstrap {
             throw ManagedLauncherBootstrapError.launcherNotInstalled(launcherURL.path)
         }
 
-        let prepared = try prepareRuntime(
+        let prepared = try RuntimeEnvironmentPreparer.prepare(
             profile: profile,
+            executableForProbe: launcherURL,
             paths: paths,
             host: host,
             fileManager: fileManager
@@ -112,87 +114,12 @@ public enum ManagedLauncherBootstrap {
         )
     }
 
-    private struct PreparedRuntime {
-        let installed: InstalledRuntime
-        let cpu: CPUBackend
-        let graphics: GraphicsBackend
-        let context: RuntimeLaunchContext
-    }
-
-    private static func prepareRuntime(
-        profile: RuntimeProfile,
-        paths: RuntimePaths,
-        host: HostCapabilities,
-        fileManager: FileManager
-    ) throws -> PreparedRuntime {
-        guard profile.runtime == .compatibility else {
-            throw ManagedLauncherBootstrapError.compatibilityRuntimeRequired
-        }
-        try profile.validate()
-        try paths.ensureDirectories(fileManager: fileManager)
-        try paths.ensureTargetDirectories(for: profile.id, fileManager: fileManager)
-
-        let installed = try RuntimeCatalog(runtimesURL: paths.runtimesURL).resolve(
-            identifier: profile.runtimeIdentifier,
-            fileManager: fileManager
-        )
-        let runtimeExecutable = installed.rootURL.appendingPathComponent(installed.descriptor.executable)
-        guard fileManager.isExecutableFile(atPath: runtimeExecutable.path) else {
-            throw LaunchSessionError.runtimeExecutableMissing(runtimeExecutable.path)
-        }
-
-        let cpu = try BackendResolver.resolveCPU(
-            requested: profile.cpu,
-            runtime: installed.descriptor,
-            host: host
-        )
-        let graphics = try BackendResolver.resolveGraphics(
-            requested: profile.graphics,
-            runtime: installed.descriptor
-        )
-        let context = RuntimeLaunchContext(
-            runtimeRoot: installed.rootURL,
-            targetRoot: paths.targetURL(for: profile.id),
-            prefixRoot: paths.prefixURL(for: profile.id),
-            cacheRoot: paths.cacheURL(for: profile.id)
-        )
-
-        try PrefixManager.ensureInitialized(
-            runtime: installed.descriptor,
-            runtimeRoot: installed.rootURL,
-            cpu: cpu,
-            graphics: graphics,
-            context: context,
-            logURL: paths.logURL(for: profile.id),
-            fileManager: fileManager
-        )
-        try RuntimePathMapper.apply(
-            installed.descriptor.pathMappings ?? [],
-            context: context,
-            fileManager: fileManager
-        )
-        try RuntimeOverlayInstaller.apply(
-            runtime: installed.descriptor,
-            cpu: cpu,
-            graphics: graphics,
-            context: context,
-            fileManager: fileManager
-        )
-
-        return PreparedRuntime(
-            installed: installed,
-            cpu: cpu,
-            graphics: graphics,
-            context: context
-        )
-    }
-
     private static func makeCommand(
         profile: RuntimeProfile,
         executableURL: URL,
         arguments: [String],
         suffix: String,
-        prepared: PreparedRuntime
+        prepared: PreparedCompatibilityRuntime
     ) throws -> LaunchCommand {
         let plan = LaunchPlan(
             profileID: profile.id + suffix,
@@ -209,8 +136,8 @@ public enum ManagedLauncherBootstrap {
 
         return try LaunchCommandBuilder.make(
             plan: plan,
-            runtime: prepared.installed.descriptor,
-            runtimeRoot: prepared.installed.rootURL,
+            runtime: prepared.installedRuntime.descriptor,
+            runtimeRoot: prepared.installedRuntime.rootURL,
             context: prepared.context
         )
     }
