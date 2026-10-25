@@ -72,6 +72,20 @@ struct OutRageHostApp: App {
         _ profile: RuntimeProfile,
         paths: RuntimePaths = RuntimePaths()
     ) throws {
+        if profile.launcher == .managed,
+           profile.acquisition?.kind == .managedLauncher {
+            try launchManagedTarget(profile, paths: paths)
+            return
+        }
+
+        try launchDirectTarget(profile, paths: paths)
+    }
+
+    @MainActor
+    private func launchDirectTarget(
+        _ profile: RuntimeProfile,
+        paths: RuntimePaths
+    ) throws {
         let session = try LaunchSessionBuilder.prepare(profile: profile, paths: paths)
         state = .launching(profile.displayName)
 
@@ -90,8 +104,57 @@ struct OutRageHostApp: App {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             guard running.isRunning else { return }
-            NSApplication.shared.setActivationPolicy(.accessory)
-            NSApplication.shared.hide(nil)
+            hideNativeHost()
+        }
+    }
+
+    @MainActor
+    private func launchManagedTarget(
+        _ profile: RuntimeProfile,
+        paths: RuntimePaths
+    ) throws {
+        let targetURL = paths.executableURL(for: profile)
+        guard FileManager.default.fileExists(atPath: targetURL.path) else {
+            throw LaunchSessionError.targetExecutableMissing(targetURL.path)
+        }
+
+        let processNeedle = targetURL.lastPathComponent
+        let monitor = ProcessHandoffMonitor()
+        let baselinePIDs = try monitor.baselinePIDs(commandContains: processNeedle)
+        let command = try ManagedLauncherBootstrap.makeInstalledLauncherCommand(
+            profile: profile,
+            paths: paths
+        )
+
+        state = .launching(profile.displayName)
+        let launcher = try ProcessRunner.start(
+            command,
+            outputURL: paths.logURL(for: profile.id)
+        )
+        runningProcess = launcher
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            guard launcher.isRunning else { return }
+            hideNativeHost()
+        }
+
+        Task { @MainActor in
+            do {
+                let target = try await monitor.waitForTarget(
+                    commandContains: processNeedle,
+                    launcherPID: launcher.processIdentifier,
+                    excluding: baselinePIDs,
+                    timeout: .seconds(600)
+                )
+                state = .running(profile.displayName, target.pid)
+                hideNativeHost()
+
+                try await monitor.waitUntilExit(pid: target.pid)
+                NSApplication.shared.terminate(nil)
+            } catch {
+                revealNativeHost()
+                state = .error(String(describing: error))
+            }
         }
     }
 
@@ -226,6 +289,19 @@ struct OutRageHostApp: App {
         panel.canCreateDirectories = false
         return panel.runModal() == .OK ? panel.url : nil
     }
+}
+
+@MainActor
+private func hideNativeHost() {
+    NSApplication.shared.setActivationPolicy(.accessory)
+    NSApplication.shared.hide(nil)
+}
+
+@MainActor
+private func revealNativeHost() {
+    NSApplication.shared.setActivationPolicy(.regular)
+    NSApplication.shared.unhide(nil)
+    NSApplication.shared.activate(ignoringOtherApps: true)
 }
 
 private enum HostState {
