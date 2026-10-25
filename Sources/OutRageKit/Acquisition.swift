@@ -13,6 +13,7 @@ public struct AcquisitionDescriptor: Codable, Equatable, Sendable {
     public var installerSHA256: String?
     public var installerArguments: [String]?
     public var managedLauncherExecutable: String?
+    public var managedLauncherDisplayName: String?
     public var managedLauncherArguments: [String]?
     public var targetBootstrapExecutable: String?
     public var targetBootstrapArguments: [String]?
@@ -26,6 +27,7 @@ public struct AcquisitionDescriptor: Codable, Equatable, Sendable {
         installerSHA256: String? = nil,
         installerArguments: [String]? = nil,
         managedLauncherExecutable: String? = nil,
+        managedLauncherDisplayName: String? = nil,
         managedLauncherArguments: [String]? = nil,
         targetBootstrapExecutable: String? = nil,
         targetBootstrapArguments: [String]? = nil,
@@ -38,6 +40,7 @@ public struct AcquisitionDescriptor: Codable, Equatable, Sendable {
         self.installerSHA256 = installerSHA256
         self.installerArguments = installerArguments
         self.managedLauncherExecutable = managedLauncherExecutable
+        self.managedLauncherDisplayName = managedLauncherDisplayName
         self.managedLauncherArguments = managedLauncherArguments
         self.targetBootstrapExecutable = targetBootstrapExecutable
         self.targetBootstrapArguments = targetBootstrapArguments

@@ -28,6 +28,7 @@
     "installerSHA256": "321886457b7e4ab727a27671c17a815684a3943579eedf7e2248a3b9f0973746",
     "installerArguments": [],
     "managedLauncherExecutable": "drive_c/Program Files/Rockstar Games/Launcher/Launcher.exe",
+    "managedLauncherDisplayName": "Rockstar Games Launcher",
     "managedLauncherArguments": []
   }
 }

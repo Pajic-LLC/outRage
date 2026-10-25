@@ -14,19 +14,24 @@ public struct ProcessSnapshot: Equatable, Sendable {
 
 public enum ProcessDiscovery {
     public static func snapshots() throws -> [ProcessSnapshot] {
+        try snapshots(executableURL: URL(fileURLWithPath: "/bin/ps"), arguments: ["-axo", "pid=,ppid=,command="])
+    }
+
+    static func snapshots(executableURL: URL, arguments: [String]) throws -> [ProcessSnapshot] {
         let process = Process()
         let pipe = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/bin/ps")
-        process.arguments = ["-axo", "pid=,ppid=,command="]
+        process.executableURL = executableURL
+        process.arguments = arguments
         process.standardOutput = pipe
         process.standardError = FileHandle.nullDevice
         try process.run()
+        // Drain while ps runs: a full pipe otherwise prevents ps from exiting.
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
         guard process.terminationStatus == 0 else {
             throw ProcessDiscoveryError.psFailed(process.terminationStatus)
         }
 
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
         return parse(String(decoding: data, as: UTF8.self))
     }
 
