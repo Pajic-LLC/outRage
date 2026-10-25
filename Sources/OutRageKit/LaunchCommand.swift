@@ -48,13 +48,22 @@ public enum LaunchCommandBuilder {
 
         let graphics = try resolveGraphics(plan.graphics, runtime: runtime)
         let runtimeExecutable = runtimeRoot.appendingPathComponent(runtime.executable)
-        let runtimePrefix = context?.expanding(runtime.argumentPrefix) ?? runtime.argumentPrefix
+        let cpuConfiguration = runtime.configuration(for: plan.cpu)
+        let graphicsConfiguration = runtime.configuration(for: graphics)
+
+        var rawRuntimePrefix = runtime.argumentPrefix
+        rawRuntimePrefix += cpuConfiguration?.arguments ?? []
+        rawRuntimePrefix += graphicsConfiguration?.arguments ?? []
+        let runtimePrefix = context?.expanding(rawRuntimePrefix) ?? rawRuntimePrefix
         let planArguments = context?.expanding(plan.arguments) ?? plan.arguments
         let runtimeArguments = runtimePrefix + [plan.executableURL.path] + planArguments
 
-        var environment = context?.expanding(runtime.environment) ?? runtime.environment
-        let planEnvironment = context?.expanding(plan.environment) ?? plan.environment
-        planEnvironment.forEach { environment[$0.key] = $0.value }
+        var rawEnvironment = runtime.environment
+        cpuConfiguration?.environment?.forEach { rawEnvironment[$0.key] = $0.value }
+        graphicsConfiguration?.environment?.forEach { rawEnvironment[$0.key] = $0.value }
+        plan.environment.forEach { rawEnvironment[$0.key] = $0.value }
+        var environment = context?.expanding(rawEnvironment) ?? rawEnvironment
+
         environment["OUTRAGE_GRAPHICS_BACKEND"] = graphics.rawValue
         environment["OUTRAGE_CPU_BACKEND"] = plan.cpu.rawValue
 
