@@ -167,10 +167,11 @@ struct OutRageCLI {
 
     static func bundle(arguments: [String]) throws {
         guard let profilePath = arguments.first else {
-            throw CLIError.usage("bundle <profile.json> [--host <outrage-host>] [--output <directory>]")
+            throw CLIError.usage("bundle <profile.json> [--host <outrage-host>] [--icon <AppIcon.icns>] [--output <directory>]")
         }
 
         var hostPath: String?
+        var iconPath: String?
         var outputPath = FileManager.default.currentDirectoryPath
         var index = 1
         while index < arguments.count {
@@ -178,6 +179,10 @@ struct OutRageCLI {
             case "--host":
                 guard index + 1 < arguments.count else { throw CLIError.usage("--host requires a path") }
                 hostPath = arguments[index + 1]
+                index += 2
+            case "--icon":
+                guard index + 1 < arguments.count else { throw CLIError.usage("--icon requires a path") }
+                iconPath = arguments[index + 1]
                 index += 2
             case "--output":
                 guard index + 1 < arguments.count else { throw CLIError.usage("--output requires a path") }
@@ -199,6 +204,7 @@ struct OutRageCLI {
         let app = try AppBundleBuilder().build(
             profile: profile,
             hostExecutable: host,
+            iconURL: iconPath.map { URL(fileURLWithPath: $0) },
             outputDirectory: URL(fileURLWithPath: outputPath, isDirectory: true)
         )
         print(app.path)
