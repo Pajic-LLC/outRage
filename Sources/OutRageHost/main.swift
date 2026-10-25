@@ -117,8 +117,30 @@ struct OutRageHostApp: App {
             state = .needsSetup("Sign-in setup is required before this target can be installed.")
 
         case .importExisting:
-            state = .needsSetup("Existing target files need to be selected before launch.")
+            state = .selectingFiles(profile.displayName)
+            guard let directory = selectExistingTargetDirectory(for: profile.displayName) else {
+                state = .needsSetup("Select the folder containing the installed target to continue.")
+                return
+            }
+            _ = try TargetImporter.linkExisting(
+                sourceDirectory: directory,
+                profile: profile
+            )
+            try launchTarget(profile)
         }
+    }
+
+    @MainActor
+    private func selectExistingTargetDirectory(for displayName: String) -> URL? {
+        let panel = NSOpenPanel()
+        panel.title = "Locate \(displayName)"
+        panel.message = "Choose the folder containing the installed files."
+        panel.prompt = "Use This Folder"
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = false
+        return panel.runModal() == .OK ? panel.url : nil
     }
 }
 
@@ -127,6 +149,7 @@ private enum HostState {
     case preparing(String)
     case downloadingSetup(String)
     case runningSetup(String)
+    case selectingFiles(String)
     case launching(String)
     case running(String, Int32)
     case needsSetup(String)
@@ -138,6 +161,7 @@ private enum HostState {
         case .preparing(let name): return "Preparing \(name)…"
         case .downloadingSetup(let name): return "Preparing \(name) setup…"
         case .runningSetup(let name): return "Setting up \(name)…"
+        case .selectingFiles(let name): return "Locate \(name)"
         case .launching(let name): return "Opening \(name)…"
         case .running(let name, _): return "\(name) is running"
         case .needsSetup: return "Setup required"
@@ -147,7 +171,7 @@ private enum HostState {
 
     var detail: String? {
         switch self {
-        case .loading, .preparing, .downloadingSetup, .runningSetup, .launching: return nil
+        case .loading, .preparing, .downloadingSetup, .runningSetup, .selectingFiles, .launching: return nil
         case .running(_, let pid): return "Process \(pid)"
         case .needsSetup(let message): return message
         case .error(let message): return message
