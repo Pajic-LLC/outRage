@@ -23,6 +23,17 @@ public struct RuntimePaths: Sendable {
         prefixesURL.appendingPathComponent(profileID, isDirectory: true)
     }
 
+    public func executableRootURL(for profile: RuntimeProfile) -> URL {
+        switch profile.resolvedExecutableScope {
+        case .target: return targetURL(for: profile.id)
+        case .prefix: return prefixURL(for: profile.id)
+        }
+    }
+
+    public func executableURL(for profile: RuntimeProfile) -> URL {
+        executableRootURL(for: profile).appendingPathComponent(profile.executable)
+    }
+
     public func cacheURL(for profileID: String) -> URL {
         cacheURL.appendingPathComponent(profileID, isDirectory: true)
     }
