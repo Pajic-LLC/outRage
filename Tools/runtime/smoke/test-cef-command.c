@@ -13,6 +13,9 @@ int main(void) {
     assert(!wcscmp(out + wcslen(expected), L" --disable-gpu --disable-gpu-compositing"));
     assert(outrage_cef_command(L"helper.exe --type=renderer", L"real.exe", L"swiftshader", out, 1024));
     assert(!wcscmp(out, L"\"real.exe\" --type=renderer --use-gl=angle --use-angle=swiftshader"));
+    assert(outrage_cef_command(raw, real, L"inprocess", out, 1024));
+    assert(!wcsncmp(out, expected, wcslen(expected)));
+    assert(!wcscmp(out + wcslen(expected), L" --in-process-gpu"));
     assert(!outrage_cef_command(raw, real, L"software", out, 10));
     assert(!outrage_cef_command(raw, real, L"unknown", out, 1024));
     assert(!outrage_cef_command(L"\"unterminated", real, L"software", out, 1024));

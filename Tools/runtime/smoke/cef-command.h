@@ -10,6 +10,8 @@ static int outrage_cef_command(const wchar_t *original, const wchar_t *real,
     const wchar_t *flags;
     if (!wcscmp(mode, L"software"))
         flags = L" --disable-gpu --disable-gpu-compositing";
+    else if (!wcscmp(mode, L"inprocess"))
+        flags = L" --in-process-gpu";
     else if (!wcscmp(mode, L"swiftshader"))
         flags = L" --use-gl=angle --use-angle=swiftshader";
     else if (!wcscmp(mode, L"passthrough"))
