@@ -81,6 +81,15 @@ public enum BuiltinMetalRuntimeComposer {
             ],
             supportedCPUBackends: [.rosetta],
             supportedGraphicsBackends: [.dxmt],
+            cpuConfigurations: [
+                "rosetta": RuntimeBackendConfiguration(
+                    environment: [
+                        // Rosetta on current macOS can translate AVX/AVX2. Profiles
+                        // may override this back to 0 if a specific title regresses.
+                        "ROSETTA_ADVERTISE_AVX": "1"
+                    ]
+                )
+            ],
             graphicsConfigurations: [
                 "dxmt": RuntimeBackendConfiguration(
                     fileMappings: [
