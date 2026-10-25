@@ -13,18 +13,34 @@ struct OutRageHostApp: App {
     var body: some Scene {
         WindowGroup {
             VStack(spacing: 14) {
-                ProgressView()
-                    .controlSize(.large)
+                if state.showsProgress {
+                    ProgressView()
+                        .controlSize(.large)
+                }
+
                 Text(state.title)
                     .font(.headline)
+
                 if let detail = state.detail {
                     Text(detail)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
+
+                if state.isRosettaRequired {
+                    Button("Install Rosetta") {
+                        Task { await installRosetta() }
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    Text("This uses Apple’s system installer and accepts Apple’s Rosetta license.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
             }
-            .frame(width: 420, height: 220)
+            .frame(width: 420, height: 240)
             .padding()
             .task { await launch() }
         }
@@ -41,6 +57,15 @@ struct OutRageHostApp: App {
 
             let profile = try ProfileLoader.load(from: profileURL)
             let paths = RuntimePaths()
+            let host = HostCapabilities.current()
+
+            if profile.runtime == .compatibility,
+               host.architecture == "arm64",
+               !host.hasRosetta,
+               profile.cpu == .auto || profile.cpu == .rosetta {
+                state = .rosettaRequired(profile.displayName)
+                return
+            }
 
             if profile.runtime == .compatibility {
                 state = .preparingRuntime(profile.displayName)
@@ -62,6 +87,21 @@ struct OutRageHostApp: App {
             state = .needsSetup("Runtime setup is required")
         } catch LaunchSessionError.runtimeExecutableMissing {
             state = .needsSetup("Runtime installation is incomplete")
+        } catch {
+            state = .error(String(describing: error))
+        }
+    }
+
+    @MainActor
+    private func installRosetta() async {
+        state = .installingRosetta
+        do {
+            try await RosettaInstaller.install()
+            guard HostCapabilities.current().hasRosetta else {
+                state = .error("Rosetta installation completed, but x86-64 translation is still unavailable.")
+                return
+            }
+            await launch()
         } catch {
             state = .error(String(describing: error))
         }
@@ -349,6 +389,8 @@ private func revealNativeHost() {
 
 private enum HostState {
     case loading
+    case rosettaRequired(String)
+    case installingRosetta
     case preparingRuntime(String)
     case preparing(String)
     case downloadingSetup(String)
@@ -362,6 +404,8 @@ private enum HostState {
     var title: String {
         switch self {
         case .loading: return "Preparing…"
+        case .rosettaRequired(let name): return "Rosetta is required for \(name)"
+        case .installingRosetta: return "Installing Rosetta…"
         case .preparingRuntime(let name): return "Preparing \(name) runtime…"
         case .preparing(let name): return "Preparing \(name)…"
         case .downloadingSetup(let name): return "Preparing \(name) setup…"
@@ -376,12 +420,28 @@ private enum HostState {
 
     var detail: String? {
         switch self {
-        case .loading, .preparingRuntime, .preparing, .downloadingSetup, .runningSetup, .selectingFiles, .launching:
+        case .rosettaRequired:
+            return "Apple’s x86-64 translation layer is not installed on this Mac."
+        case .loading, .installingRosetta, .preparingRuntime, .preparing, .downloadingSetup, .runningSetup, .selectingFiles, .launching:
             return nil
         case .running(_, let pid): return "Process \(pid)"
         case .needsSetup(let message): return message
         case .error(let message): return message
         }
+    }
+
+    var showsProgress: Bool {
+        switch self {
+        case .loading, .installingRosetta, .preparingRuntime, .preparing, .downloadingSetup, .runningSetup, .launching:
+            return true
+        case .rosettaRequired, .selectingFiles, .running, .needsSetup, .error:
+            return false
+        }
+    }
+
+    var isRosettaRequired: Bool {
+        if case .rosettaRequired = self { return true }
+        return false
     }
 }
 #else
