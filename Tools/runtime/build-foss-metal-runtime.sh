@@ -196,6 +196,19 @@ if [[ -f "$MACDRV" ]]; then
     nm -gU "$MACDRV" | grep -q ' _macdrv_functions$' || die "staged macOS driver is missing the required exported driver table"
 fi
 
+WINE_LOADER=""
+if [[ -x "$ENGINE_ROOT/bin/wine64" ]]; then
+    WINE_LOADER="$ENGINE_ROOT/bin/wine64"
+elif [[ -x "$ENGINE_ROOT/bin/wine" ]]; then
+    WINE_LOADER="$ENGINE_ROOT/bin/wine"
+fi
+[[ -n "$WINE_LOADER" ]] || die "staged engine has no executable loader"
+
+log "Smoke-testing staged engine"
+WINE_VERSION_OUTPUT="$(arch -x86_64 "$WINE_LOADER" --version 2>&1)" || die "staged engine could not execute under Rosetta"
+[[ "$WINE_VERSION_OUTPUT" == wine-* ]] || die "unexpected staged engine version output: $WINE_VERSION_OUTPUT"
+echo "$WINE_VERSION_OUTPUT"
+
 log "Extracting Metal backend"
 rm -rf "$DXMT_ROOT"
 mkdir -p "$DXMT_ROOT"
