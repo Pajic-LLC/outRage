@@ -118,7 +118,7 @@ struct OutRageHostApp: App {
             throw LaunchSessionError.targetExecutableMissing(targetURL.path)
         }
 
-        let processNeedle = targetURL.lastPathComponent
+        let processNeedle = profile.resolvedProcessMatch
         let monitor = ProcessHandoffMonitor()
         let baselinePIDs = try monitor.baselinePIDs(commandContains: processNeedle)
         let command = try ManagedLauncherBootstrap.makeInstalledLauncherCommand(
