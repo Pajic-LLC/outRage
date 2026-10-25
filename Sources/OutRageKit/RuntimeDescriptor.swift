@@ -63,14 +63,18 @@ public struct RuntimeDescriptor: Codable, Equatable, Sendable {
             throw RuntimeDescriptorError.noGraphicsBackends
         }
 
-        for key in cpuConfigurations?.keys ?? Dictionary<String, RuntimeBackendConfiguration>().keys {
-            guard let backend = CPUBackend(rawValue: key), backend != .auto else {
-                throw RuntimeDescriptorError.invalidCPUConfiguration(key)
+        if let cpuConfigurations {
+            for key in cpuConfigurations.keys {
+                guard let backend = CPUBackend(rawValue: key), backend != .auto else {
+                    throw RuntimeDescriptorError.invalidCPUConfiguration(key)
+                }
             }
         }
-        for key in graphicsConfigurations?.keys ?? Dictionary<String, RuntimeBackendConfiguration>().keys {
-            guard let backend = GraphicsBackend(rawValue: key), backend != .auto else {
-                throw RuntimeDescriptorError.invalidGraphicsConfiguration(key)
+        if let graphicsConfigurations {
+            for key in graphicsConfigurations.keys {
+                guard let backend = GraphicsBackend(rawValue: key), backend != .auto else {
+                    throw RuntimeDescriptorError.invalidGraphicsConfiguration(key)
+                }
             }
         }
     }
