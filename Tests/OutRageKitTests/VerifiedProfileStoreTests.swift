@@ -54,12 +54,12 @@ import Testing
         fileManager: fm
     ) == updated)
 
-    var badSignature = envelope.signature
-    badSignature[0] ^= 0xff
+    var badSignature = try #require(Data(base64Encoded: envelope.signatureBase64))
+    badSignature[badSignature.startIndex] ^= 0xff
     let tamperedEnvelope = SignedProfileEnvelope(
         keyID: envelope.keyID,
-        payload: envelope.payload,
-        signature: badSignature
+        payloadBase64: envelope.payloadBase64,
+        signatureBase64: badSignature.base64EncodedString()
     )
     try JSONEncoder().encode(tamperedEnvelope).write(
         to: VerifiedProfileStore.envelopeURL(profileID: bundled.id, paths: paths),
