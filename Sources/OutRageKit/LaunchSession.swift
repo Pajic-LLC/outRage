@@ -65,6 +65,16 @@ public enum LaunchSessionBuilder {
             throw LaunchSessionError.runtimeExecutableMissing(runtimeExecutable.path)
         }
 
+        let executableCandidate = paths.executableURL(for: profile)
+        let graphicsHints: [GraphicsAPIHint]
+        if profile.graphics == .auto,
+           fileManager.fileExists(atPath: executableCandidate.path),
+           let probe = try? PEProbe.inspect(executableCandidate, fileManager: fileManager) {
+            graphicsHints = probe.graphicsHints
+        } else {
+            graphicsHints = []
+        }
+
         var resolvedProfile = profile
         resolvedProfile.cpu = try BackendResolver.resolveCPU(
             requested: profile.cpu,
@@ -73,7 +83,8 @@ public enum LaunchSessionBuilder {
         )
         resolvedProfile.graphics = try BackendResolver.resolveGraphics(
             requested: profile.graphics,
-            runtime: installed.descriptor
+            runtime: installed.descriptor,
+            hints: graphicsHints
         )
 
         let context = RuntimeLaunchContext(
