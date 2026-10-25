@@ -26,13 +26,22 @@ jobs:
           bash Tools/runtime/build-foss-metal-runtime.sh \
             --install-deps \
             --output "$RUNNER_TEMP/runtime-packages"
-      - name: Verify packaged runtime
+      - name: Install packaged runtime
         run: |
           ARCHIVE="$(find "$RUNNER_TEMP/runtime-packages" -maxdepth 1 -type f -name '*.zip' -print -quit)"
           MANIFEST="$(find "$RUNNER_TEMP/runtime-packages" -maxdepth 1 -type f -name '*.manifest.json' -print -quit)"
           test -n "$ARCHIVE"
           test -n "$MANIFEST"
           swift run -c release outrage runtime-install "$ARCHIVE" "$MANIFEST"
+      - name: Audit runtime self-containment
+        run: |
+          RUNTIME_ROOT="$(swift run -c release outrage runtimes | awk '$1 == "outrage-metal-x86_64" { print $2; exit }')"
+          test -n "$RUNTIME_ROOT"
+          bash Tools/runtime/audit-runtime-dylibs.sh "$RUNTIME_ROOT"
+      - name: Smoke-test DXMT initialization
+        run: swift run -c release outrage runtime-smoke-dxmt outrage-metal-x86_64
+      - name: Smoke-test Windows execution
+        run: bash Tools/runtime/smoke/verify-installed-runtime.sh outrage-metal-x86_64
       - name: Inspect package
         run: |
           ls -lah "$RUNNER_TEMP/runtime-packages"
