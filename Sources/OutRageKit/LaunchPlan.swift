@@ -28,14 +28,26 @@ public enum LaunchPlanner {
     public static func makePlan(
         profile: RuntimeProfile,
         targetRoot: URL,
+        prefixRoot: URL? = nil,
         host: HostCapabilities = .current()
     ) throws -> LaunchPlan {
         try profile.validate()
 
-        let executableURL = targetRoot.appendingPathComponent(profile.executable)
+        let executableRoot: URL
+        switch profile.resolvedExecutableScope {
+        case .target:
+            executableRoot = targetRoot
+        case .prefix:
+            guard let prefixRoot else {
+                throw LaunchPlannerError.prefixRootRequired
+            }
+            executableRoot = prefixRoot
+        }
+
+        let executableURL = executableRoot.appendingPathComponent(profile.executable)
         let workingDirectoryURL: URL
         if let relative = profile.workingDirectory {
-            workingDirectoryURL = targetRoot.appendingPathComponent(relative, isDirectory: true)
+            workingDirectoryURL = executableRoot.appendingPathComponent(relative, isDirectory: true)
         } else {
             workingDirectoryURL = executableURL.deletingLastPathComponent()
         }
@@ -52,5 +64,16 @@ public enum LaunchPlanner {
             arguments: profile.arguments,
             environment: profile.environment
         )
+    }
+}
+
+public enum LaunchPlannerError: Error, Equatable, CustomStringConvertible {
+    case prefixRootRequired
+
+    public var description: String {
+        switch self {
+        case .prefixRootRequired:
+            return "Prefix root is required for a prefix-scoped executable"
+        }
     }
 }
