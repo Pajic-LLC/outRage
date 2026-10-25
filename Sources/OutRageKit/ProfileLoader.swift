@@ -8,8 +8,16 @@ public enum ProfileLoader {
         return profile
     }
 
-    public static func save(_ profile: RuntimeProfile, to url: URL) throws {
+    public static func save(
+        _ profile: RuntimeProfile,
+        to url: URL,
+        fileManager: FileManager = .default
+    ) throws {
         try profile.validate()
+        try fileManager.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         let data = try encoder.encode(profile)
