@@ -51,10 +51,11 @@ jobs:
           cp dlls/winemac.drv/winemac.so ../modules/
           cd ../modules
           file winemac.so
-          lipo -verify_arch x86_64 winemac.so
+          lipo winemac.so -verify_arch x86_64
           otool -L winemac.so > DEPENDENCIES.txt
           shasum -a 256 winemac.so DEPENDENCIES.txt > SHA256SUMS
       - name: Upload developer driver
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: wine-window-diagnostic-driver
