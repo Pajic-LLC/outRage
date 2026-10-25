@@ -188,12 +188,14 @@ struct OutRageCLI {
 
     static func bundle(arguments: [String]) throws {
         guard let profilePath = arguments.first else {
-            throw CLIError.usage("bundle <profile.json> [--host <outrage-host>] [--icon <AppIcon.icns>] [--output <directory>]")
+            throw CLIError.usage("bundle <profile.json> [--host <outrage-host>] [--icon <AppIcon.icns>] [--output <directory>] [--unsigned | --sign-identity <identity>] [--hardened-runtime]")
         }
 
         var hostPath: String?
         var iconPath: String?
         var outputPath = FileManager.default.currentDirectoryPath
+        var signingIdentity: String? = "-"
+        var hardenedRuntime = false
         var index = 1
         while index < arguments.count {
             switch arguments[index] {
@@ -209,6 +211,16 @@ struct OutRageCLI {
                 guard index + 1 < arguments.count else { throw CLIError.usage("--output requires a path") }
                 outputPath = arguments[index + 1]
                 index += 2
+            case "--unsigned":
+                signingIdentity = nil
+                index += 1
+            case "--sign-identity":
+                guard index + 1 < arguments.count else { throw CLIError.usage("--sign-identity requires an identity") }
+                signingIdentity = arguments[index + 1]
+                index += 2
+            case "--hardened-runtime":
+                hardenedRuntime = true
+                index += 1
             default:
                 throw CLIError.usage("unknown bundle option: \(arguments[index])")
             }
@@ -228,6 +240,16 @@ struct OutRageCLI {
             iconURL: iconPath.map { URL(fileURLWithPath: $0) },
             outputDirectory: URL(fileURLWithPath: outputPath, isDirectory: true)
         )
+
+        if let signingIdentity {
+            try AppBundleCodeSigner.sign(
+                appURL: app,
+                identity: signingIdentity,
+                hardenedRuntime: hardenedRuntime
+            )
+            try AppBundleCodeSigner.verify(appURL: app)
+        }
+
         print(app.path)
     }
 
@@ -291,7 +313,7 @@ struct OutRageCLI {
           acquisition-plan <profile.json>                           Resolve target acquisition
           probe <windows-executable>                                Inspect a PE target
           launch <profile.json> [--wait]                            Launch a configured target
-          bundle <profile.json> [...]                               Build a native .app wrapper
+          bundle <profile.json> [...]                               Build, sign and verify a native .app wrapper
         """)
     }
 }
