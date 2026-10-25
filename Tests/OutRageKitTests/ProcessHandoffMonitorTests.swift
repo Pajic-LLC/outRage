@@ -35,3 +35,44 @@ import Testing
 
     #expect(target.pid == 12)
 }
+
+@Test func processHandoffMonitorOneShotFindsDescendantTarget() throws {
+    let monitor = ProcessHandoffMonitor(
+        snapshotProvider: {
+            [
+                ProcessSnapshot(pid: 100, parentPID: 1, command: "/runtime/wine Launcher.exe"),
+                ProcessSnapshot(pid: 101, parentPID: 100, command: "/runtime/wine Helper.exe"),
+                ProcessSnapshot(pid: 102, parentPID: 101, command: "/runtime/wine Target.exe --started")
+            ]
+        },
+        sleeper: { _ in }
+    )
+
+    let target = try monitor.targetIfPresent(
+        commandContains: "Target.exe",
+        launcherPID: 100,
+        excluding: []
+    )
+
+    #expect(target?.pid == 102)
+}
+
+@Test func processHandoffMonitorOneShotIgnoresPreexistingTarget() throws {
+    let monitor = ProcessHandoffMonitor(
+        snapshotProvider: {
+            [
+                ProcessSnapshot(pid: 200, parentPID: 1, command: "/runtime/wine Target.exe"),
+                ProcessSnapshot(pid: 210, parentPID: 1, command: "/runtime/wine Launcher.exe")
+            ]
+        },
+        sleeper: { _ in }
+    )
+
+    let target = try monitor.targetIfPresent(
+        commandContains: "Target.exe",
+        launcherPID: 210,
+        excluding: [200]
+    )
+
+    #expect(target == nil)
+}
