@@ -252,27 +252,58 @@ struct OutRageHostApp: App {
         _ profile: RuntimeProfile,
         paths: RuntimePaths
     ) throws {
-        state = .runningSetup(profile.displayName)
+        let processNeedle = profile.resolvedProcessMatch
+        let monitor = ProcessHandoffMonitor()
+        let baselinePIDs = try monitor.baselinePIDs(commandContains: processNeedle)
         let command = try ManagedLauncherBootstrap.makeInstalledLauncherCommand(
             profile: profile,
             paths: paths
         )
-        let running = try ProcessRunner.start(
+
+        state = .runningSetup(profile.displayName)
+        let launcher = try ProcessRunner.start(
             command,
             outputURL: paths.logURL(for: profile.id)
         )
-        runningProcess = running
-        running.process.terminationHandler = { _ in
-            DispatchQueue.main.async {
-                if FileManager.default.fileExists(atPath: paths.executableURL(for: profile).path) {
-                    do {
-                        try launchTarget(profile, paths: paths)
-                    } catch {
-                        state = .error(String(describing: error))
+        runningProcess = launcher
+
+        Task { @MainActor in
+            do {
+                while launcher.isRunning {
+                    if let target = try monitor.targetIfPresent(
+                        commandContains: processNeedle,
+                        launcherPID: launcher.processIdentifier,
+                        excluding: baselinePIDs
+                    ) {
+                        state = .running(profile.displayName, target.pid)
+                        hideNativeHost()
+                        try await monitor.waitUntilExit(pid: target.pid)
+                        NSApplication.shared.terminate(nil)
+                        return
                     }
+                    try await Task.sleep(for: .milliseconds(500))
+                }
+
+                if let target = try monitor.targetIfPresent(
+                    commandContains: processNeedle,
+                    launcherPID: launcher.processIdentifier,
+                    excluding: baselinePIDs
+                ) {
+                    state = .running(profile.displayName, target.pid)
+                    hideNativeHost()
+                    try await monitor.waitUntilExit(pid: target.pid)
+                    NSApplication.shared.terminate(nil)
+                    return
+                }
+
+                if FileManager.default.fileExists(atPath: paths.executableURL(for: profile).path) {
+                    try launchTarget(profile, paths: paths)
                 } else {
                     state = .needsSetup("Finish installing the target in the launcher, then open this app again.")
                 }
+            } catch {
+                revealNativeHost()
+                state = .error(String(describing: error))
             }
         }
     }
