@@ -15,6 +15,7 @@ on:
       - Tools/runtime/smoke/cef-process-probe.c
       - Tools/runtime/smoke/winemac-window-observer.m
       - Tools/runtime/smoke/d3d12-copy.c
+      - Tools/runtime/smoke/d3d12-render.c
 
 permissions:
   contents: read
@@ -49,6 +50,10 @@ jobs:
           x86_64-w64-mingw32-gcc -O2 -Wall -Wextra -Werror \
             Tools/runtime/smoke/d3d12-copy.c -o "$RUNNER_TEMP/runtime-probes/d3d12-copy.exe" \
             -ld3d12 -ldxgi -ldxguid -luuid
+          cp Tools/runtime/smoke/d3d12-render.c "$RUNNER_TEMP/runtime-probes/"
+          x86_64-w64-mingw32-gcc -O2 -Wall -Wextra -Werror \
+            Tools/runtime/smoke/d3d12-render.c -o "$RUNNER_TEMP/runtime-probes/d3d12-render.exe" \
+            -ld3d12 -ld3dcompiler -ldxguid -luuid
           cp Tools/runtime/smoke/d3d11-context-state.c "$RUNNER_TEMP/runtime-probes/"
           x86_64-w64-mingw32-gcc -O2 -s \
             "$RUNNER_TEMP/runtime-probes/d3d11-context-state.c" \

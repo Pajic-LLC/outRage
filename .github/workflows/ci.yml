@@ -26,7 +26,7 @@ jobs:
           bash -n Tools/runtime/bundle-runtime-dylibs.sh
           bash -n Tools/runtime/audit-runtime-dylibs.sh
           bash -n Tools/runtime/smoke/verify-installed-runtime.sh
-          python3 -m py_compile Tools/runtime/patch-winemac-native-identity.py
+          python3 -m py_compile Tools/runtime/patch-winemac-native-identity.py Tools/runtime/build-mullion-test-runtime.py
           python3 Tools/runtime/test-patch-winemac-native-identity.py
           python3 Tools/runtime/test-runtime-audit-workflow.py
           python3 Tools/runtime/test-bundle-runtime-dylibs.py
@@ -35,7 +35,9 @@ jobs:
       - name: Test
         run: swift test
       - name: Validate GTA V Legacy reference profile
-        run: swift run outrage validate Profiles/gta-v-legacy-rockstar.json
+        run: |
+          swift run outrage validate Profiles/gta-v-legacy-rockstar.json
+          swift run outrage validate Profiles/gta-v-enhanced-rockstar.json
       - name: Build release tools
         run: |
           swift build -c release --product outrage

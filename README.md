@@ -12,7 +12,7 @@ The end-state experience is simple: double-click a title `.app` and let outRage 
 
 The user should not need Homebrew, Xcode, a terminal, a prefix editor, or manual DLL configuration.
 
-The intended title progression is GTA V Legacy → GTA IV → Max Payne 3 → Red Dead Redemption 2 → GTA V Enhanced → future compatible RAGE titles. These are targets, not claims of proven support. Story Mode is the initial priority; ENRAGE remains a separate modding project.
+The active owner-selected target is now GTA V Enhanced; see [the Enhanced engineering recipe](docs/GTA_V_ENHANCED.md). GTA V Legacy remains a separate reference path. GTA IV, Max Payne 3, Red Dead Redemption 2, and future compatible RAGE titles remain research targets. These are targets, not claims of proven support. Story Mode is the initial priority; ENRAGE remains a separate modding project.
 
 Authentication, ownership, entitlement, launcher updates, and DRM remain with the game/vendor. **outRage is not a DRM bypass.**
 
