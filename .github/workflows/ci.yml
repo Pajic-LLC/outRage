@@ -33,5 +33,7 @@ jobs:
           python3 Tools/runtime/test-relocate-runtime-sonames.py
       - name: Test
         run: swift test
+      - name: Validate GTA V Legacy reference profile
+        run: swift run outrage validate Profiles/gta-v-legacy-rockstar.json
       - name: Build release tools
         run: swift build -c release --product outrage --product outrage-host

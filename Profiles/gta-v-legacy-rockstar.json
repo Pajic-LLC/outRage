@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "gta-v-legacy-rockstar",
+  "displayName": "Grand Theft Auto V",
+  "bundleIdentifier": "com.pajic.outrage.gta-v-legacy",
+  "executable": "GTA5.exe",
+  "executableScope": "target",
+  "workingDirectory": ".",
+  "runtime": "compatibility",
+  "runtimeIdentifier": "outrage-metal-x86_64",
+  "launcher": "managed",
+  "cpu": "rosetta",
+  "graphics": "dxmt",
+  "arguments": [],
+  "environment": {},
+  "processMatch": "GTA5.exe",
+  "pathMappings": [
+    {
+      "sourceScope": "target",
+      "source": ".",
+      "destinationScope": "prefix",
+      "destination": "drive_c/Program Files/Rockstar Games/Grand Theft Auto V"
+    }
+  ],
+  "acquisition": {
+    "kind": "managedLauncher",
+    "installerURL": "https://gamedownloads.rockstargames.com/public/installer/Rockstar-Games-Launcher.exe",
+    "installerSHA256": "321886457b7e4ab727a27671c17a815684a3943579eedf7e2248a3b9f0973746",
+    "installerArguments": [],
+    "managedLauncherExecutable": "drive_c/Program Files/Rockstar Games/Launcher/Launcher.exe",
+    "managedLauncherArguments": []
+  }
+}

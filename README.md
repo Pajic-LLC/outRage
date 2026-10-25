@@ -20,6 +20,7 @@ Authentication, ownership, entitlement, launcher updates, and DRM remain with th
 
 - **[Product vision](docs/PRODUCT_VISION.md)** — Rockstar/RAGE scope, title progression, and the Install → Play experience.
 - **[Engineering handoff / living completion plan](HANDOFF.md)** — authoritative mission, current status, milestones, acceptance criteria, risks, and ordered next work.
+- **[GTA V Legacy reference recipe](docs/GTA_V_LEGACY.md)** — experimental Rockstar-owned Story Mode test path and outstanding proof.
 - **[Architecture](docs/ARCHITECTURE.md)** — code-facing subsystem and launch-flow overview.
 
 If you are continuing development, read `HANDOFF.md` before changing the roadmap or deciding what is “done.”
