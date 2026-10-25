@@ -16,6 +16,12 @@ The official installer contains `Rockstar Games\Launcher`, `Launcher.exe`, and `
 
 A changed installer download must fail checksum validation until a maintainer deliberately verifies and updates the pin. Credentials must be entered directly into Rockstar's UI, never into outRage configuration or diagnostics.
 
+## Story Mode vendor setting
+
+Rockstar documents a BattlEye option in the Rockstar Games Launcher for Story Mode. Use that vendor setting during the Story Mode proof; do not patch the anti-cheat or attempt to enter GTA Online without its required protection. The recipe leaves game launch arguments empty until the actual launch path is verified.
+
+Sources: [Rockstar's BattlEye FAQ](https://support.rockstargames.com/articles/1nenwhZlVrJY6CTFeSS2Fx/grand-theft-auto-online-battleye-faq), [Title Update 1.69 notes](https://support.rockstargames.com/articles/eUgRHVRSN2V9gimBT32YX/gtav-title-update-1-69-notes-ps5-ps4-xbox-series-x-s-xbox-one-pc). Rockstar also documents the conventional GTA V installation directory in its [current troubleshooting instructions](https://support.rockstargames.com/articles/ocorZr1KpQE8WvoHE3gBG/battleye-troubleshooting-for-grand-theft-auto-v).
+
 ## Required runtime and proof
 
 Install the exact `26.3.0+v0.80-launcher.1` package that passes the dependency-integrated build, portability audit, DXMT module-load, D3D11 device-creation, and Windows-execution gates. The reference profile currently selects by runtime ID; it does not enforce package-version ranges. Do not use a previously installed stripped foundation runtime for this test. No release runtime download is configured in this developer profile.
