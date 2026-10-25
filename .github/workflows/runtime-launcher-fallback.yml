@@ -2,6 +2,12 @@ name: Launcher Graphics Fallback Probe
 
 on:
   workflow_dispatch:
+    inputs:
+      probe:
+        description: Developer module to build
+        type: choice
+        options: [graphics, cef-process]
+        default: graphics
 
 permissions:
   contents: read
@@ -14,13 +20,19 @@ jobs:
       - uses: actions/checkout@v7
       - name: Install build tools
         run: brew install bison flex mingw-w64 pkgconf
-      - name: Build matching Wine Direct3D modules for isolated launcher testing
+      - name: Build pinned Wine developer modules
+        env:
+          OUTRAGE_PROBE: ${{ inputs.probe || 'graphics' }}
         run: |
+          REPO_ROOT="$PWD"
           mkdir -p "$RUNNER_TEMP/wine-fallback/source" "$RUNNER_TEMP/wine-fallback/build" "$RUNNER_TEMP/wine-fallback/modules"
           cd "$RUNNER_TEMP/wine-fallback"
           curl --fail --location --retry 3 -o crossover.tar.gz https://media.codeweavers.com/pub/crossover/source/crossover-sources-26.3.0.tar.gz
           echo 'ac99c8ca4b3848f3e81784135f023df266b61c2345726ea55a50b3e030dd6872  crossover.tar.gz' | shasum -a 256 -c -
           tar -xzf crossover.tar.gz -C source sources/wine
+          if [[ "$OUTRAGE_PROBE" == cef-process ]]; then
+            python3 "$REPO_ROOT/Tools/runtime/patch-wine-cef-process.py" source/sources/wine
+          fi
           export PATH="$(brew --prefix bison)/bin:$(brew --prefix flex)/bin:$(brew --prefix)/bin:/usr/bin:/bin:/usr/sbin:/sbin"
           export PKG_CONFIG_PATH=
           export PKG_CONFIG_LIBDIR="$RUNNER_TEMP/no-pkgconfig"
@@ -33,20 +45,23 @@ jobs:
             --enable-archs=x86_64 --disable-tests --without-x --without-vulkan \
             --without-gstreamer --without-gnutls --without-freetype --without-sdl \
             > ../configure.log 2>&1
-          arch -x86_64 make -j3 dlls/d3d10/all dlls/d3d10_1/all dlls/d3d10core/all dlls/d3d11/all dlls/dxgi/all > ../make.log 2>&1
-          for module in d3d10 d3d10_1 d3d10core d3d11 dxgi; do
-            cp "dlls/$module/x86_64-windows/$module.dll" ../modules/
-          done
+          if [[ "$OUTRAGE_PROBE" == cef-process ]]; then
+            arch -x86_64 make -j3 dlls/kernelbase/all > ../make.log 2>&1
+            cp dlls/kernelbase/x86_64-windows/kernelbase.dll ../modules/
+          else
+            arch -x86_64 make -j3 dlls/d3d10/all dlls/d3d10_1/all dlls/d3d10core/all dlls/d3d11/all dlls/dxgi/all > ../make.log 2>&1
+            for module in d3d10 d3d10_1 d3d10core d3d11 dxgi; do
+              cp "dlls/$module/x86_64-windows/$module.dll" ../modules/
+            done
+          fi
           cd ../modules
-          file d3d11.dll dxgi.dll
-          file d3d11.dll | grep -q 'PE32+.*x86-64'
-          file dxgi.dll | grep -q 'PE32+.*x86-64'
-          printf '%s\n' 'CodeWeavers FOSS 26.3.0; source SHA256 ac99c8ca4b3848f3e81784135f023df266b61c2345726ea55a50b3e030dd6872; original Wine PE graphics modules, developer probe only' > PROVENANCE.txt
+          for module in *.dll; do file "$module" | grep 'PE32+.*x86-64'; done
+          printf '%s\n' "CodeWeavers FOSS 26.3.0; source SHA256 ac99c8ca4b3848f3e81784135f023df266b61c2345726ea55a50b3e030dd6872; developer probe $OUTRAGE_PROBE; outRage commit $GITHUB_SHA" > PROVENANCE.txt
           shasum -a 256 *.dll PROVENANCE.txt > SHA256SUMS
       - name: Upload developer modules
         uses: actions/upload-artifact@v7
         with:
-          name: wine-launcher-graphics-probe
+          name: ${{ inputs.probe == 'cef-process' && 'wine-cef-process-probe' || 'wine-launcher-graphics-probe' }}
           path: ${{ runner.temp }}/wine-fallback/modules/
           retention-days: 7
       - name: Upload failure logs
