@@ -121,6 +121,9 @@ EOF
         perl -0pi -e 's/(static void vulkan_init_once\(void\))/#ifndef SONAME_LIBVULKAN \/\* OUTRAGE_NO_MOLTENVK *\/\n#define SONAME_LIBVULKAN "libMoltenVK.dylib"\n#endif\n\n$1/' "$VULKAN_C"
     fi
 
+    log "Applying native title identity patch"
+    python3 "$REPO_ROOT/Tools/runtime/patch-winemac-native-identity.py" "$WINE_SOURCE"
+
     BUILD_ENV="export PATH='$TOOL_PATH'; export PKG_CONFIG_LIBDIR=/nonexistent; export MACOSX_DEPLOYMENT_TARGET=14.0; export CC='clang -arch x86_64'; export CXX='clang++ -arch x86_64'; export OBJC='clang -arch x86_64'"
 
     log "Configuring x86_64 engine"
