@@ -118,7 +118,7 @@ The compatibility stack is an implementation detail. **The product experience sh
 - Vendor-owned session state can persist naturally inside the prefix.
 - Game ownership/entitlement remains enforced by the vendor.
 - outRage can hand off from launcher/bootstrap to the actual game process and monitor the game rather than the launcher shell.
-- A launcher update does not require game-specific core code unless a genuinely generic compatibility issue is discovered.
+- Prefer a profile update for launcher policy changes; use targeted Rockstar/RAGE runtime fixes when a demonstrated failure requires code.
 
 **Current status:** 🟢 Managed-launcher acquisition/bootstrap, target-bootstrap configuration, process baseline/handoff, launcher-PID exclusion, and lifecycle code are implemented/tested. A real authenticated Tier-3 launcher must still be proven end-to-end.
 
@@ -279,7 +279,7 @@ If a title's required anti-cheat, kernel component, DRM, or vendor policy is inc
 
 # 4. Definition of complete
 
-outRage reaches the first meaningful “complete” milestone when a release candidate can take a supported, legitimately owned Windows title from a **fresh supported Apple Silicon Mac** to repeatable gameplay through a signed/notarized title app without developer tooling.
+outRage reaches the first meaningful “complete” milestone when a release candidate can take a supported, legitimately owned Rockstar/RAGE title from a **fresh supported Apple Silicon Mac** to repeatable gameplay through a signed/notarized title app without developer tooling.
 
 For the first release candidate, all of the following must be true:
 
@@ -611,7 +611,7 @@ Acceptance criteria:
 - [x] Swift regression suite.
 - [x] Release CLI/host build in CI.
 
-Do not reopen this milestone for title-specific failures unless they reveal a generic architectural defect.
+Preserve this foundation. Add targeted Rockstar/RAGE fixes when a demonstrated title failure requires them, with regression coverage at the appropriate layer.
 
 ## M2 — Launcher-capable self-contained runtime
 
@@ -676,7 +676,7 @@ Tasks/acceptance:
 
 **Status: ⬜ next major product milestone.**
 
-Goal: prove the entire architecture on one difficult, real, owned Windows title.
+Goal: prove GTA V Legacy Story Mode through the official Rockstar Games Launcher, legitimate ownership, DXMT/Metal, and a native title app.
 
 The current intended Tier-3 reference scenario is **Rockstar Games Launcher / GTA V Legacy Story Mode** because it exercises authentication, a managed launcher, a title bootstrap, a large install, updates, process handoff, Direct3D rendering, and persistent launcher state. This is a compatibility target, not a promise of unsupported online/anti-cheat functionality.
 
@@ -699,7 +699,7 @@ Reference-title tasks:
 - [ ] Quit and relaunch.
 - [ ] Reboot macOS and relaunch.
 - [ ] Update the game and verify new build fingerprint/cache behavior.
-- [ ] Capture every compatibility workaround in profile data when possible; only generic defects belong in core code.
+- [ ] Capture compatibility workarounds in profiles when possible; implement targeted Rockstar/RAGE fixes when the evidence requires runtime or host changes.
 
 **M4 exit gate:** the reference title can be installed and repeatedly launched from its macOS `.app` into real gameplay on supported hardware with the vendor's ownership/authentication intact.
 
@@ -838,7 +838,7 @@ Final matrix should include at minimum:
 
 1. checks the Swift version;
 2. syntax-checks runtime shell tooling;
-3. compile-checks and tests the native-identity patcher;
+3. compile-checks and tests the native-identity patcher, then exercises the real workflow audit and native dylib relocation/load/signature regressions;
 4. runs `swift test`;
 5. builds release `outrage` and `outrage-host`.
 
@@ -917,7 +917,7 @@ The CLI is a developer surface. The final user experience must not require it.
 
 Treat these as current project decisions. Change them only with an explicit reason and update this document when doing so.
 
-1. **Core remains title-agnostic.** Put title quirks in profiles whenever reasonably possible.
+1. **Product scope is Rockstar/RAGE.** Prefer profiles for title policy and reusable shared infrastructure, but allow measured, targeted RAGE compatibility code when a recipe is insufficient.
 2. **One canonical runtime preparation path.** Direct, bootstrap, and managed-launcher flows must not drift.
 3. **Legitimate auth/entitlement stays intact.** outRage orchestrates; it does not impersonate ownership.
 4. **Explicit profile configuration beats defaults.** Typed convenience/performance policy must not silently override a deliberate title environment setting.
@@ -930,7 +930,7 @@ Treat these as current project decisions. Change them only with an explicit reas
 11. **Cache identity follows target build identity.** A title update must not blindly reuse incompatible build state.
 12. **Compatibility updates are verifiable.** Runtime packages and profile updates have integrity/authenticity gates.
 13. **No hidden credential collection.** Logs/support bundles must be designed around this constraint.
-14. **The first difficult title validates architecture, not hard-codes it.** If a workaround is unique to one title, prefer profile data or a narrowly defined generic extension point.
+14. **GTA V Legacy Story Mode is the first proof target.** Prefer profile data for its policy; use narrowly scoped Rockstar/RAGE fixes when real failures require code. Do not trade title correctness for hypothetical generality.
 
 ---
 
@@ -1011,9 +1011,9 @@ This is the queue to follow unless new evidence makes a higher item invalid.
 
 1. **Prove the dependency isolation fix in a fresh Runtime Dependencies run.** The original failure was ARM Homebrew Brotli/Zstd contamination during GnuTLS installation; inspect the new run before claiming the x86-64 prefix works.
 2. **Prove the spaced-path audit fix in a fresh Runtime Build run.** Build #5 stopped before auditing; capture the actual portability, DXMT, and Win32 results now that the complete runtime path reaches the auditor.
-3. **Integrate the pinned x86-64 dependency prefix into the real engine/runtime build.** The launcher-ready runtime cannot remain configured without GnuTLS/FreeType.
+3. **Integrate the pinned x86-64 dependency prefix into the real engine/runtime build.** The launcher-ready runtime cannot remain configured without GnuTLS/FreeType. The pinned Wine source loads both via `dlopen` (`SONAME_LIBGNUTLS` / `SONAME_LIBFREETYPE`); ensure those names resolve inside the relocated package, not merely that link-time references are rewritten.
 4. **Bundle/relocate/re-sign the dependency dylibs into the runtime package.**
-5. **Run the complete M2 gate on the dependency-integrated package:** install its own ZIP, portability audit, DXMT smoke, Win32 PE smoke.
+5. **Run the complete M2 gate on the dependency-integrated package:** install its own ZIP, portability audit, DXMT smoke, Win32 PE smoke. The CLI DXMT check currently proves builtin module loading, not GPU device creation; also exercise the existing `smoke-d3d11-runtime.sh` before claiming graphics initialization.
 6. **Create the first real Tier-3 reference title profile.** Keep product/process paths and launch policy in profile data.
 7. **Run a real managed-launcher first-run:** installer → login → game install into mapped storage → launch.
 8. **Prove title bootstrap if available, otherwise launcher fallback.** Do not invent undocumented entitlement shortcuts.
