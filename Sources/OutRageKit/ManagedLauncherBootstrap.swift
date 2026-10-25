@@ -211,7 +211,12 @@ public enum ManagedLauncherBootstrap {
             paths: paths,
             fileManager: fileManager
         )
-        return PerformanceLaunchTuner.tune(command, cache: cache)
+        return PerformanceLaunchTuner.tune(
+            command,
+            cache: cache,
+            policy: profile.performance,
+            explicitEnvironment: profile.environment
+        )
     }
 
     private static func makeCommand(
