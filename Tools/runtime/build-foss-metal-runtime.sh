@@ -13,6 +13,7 @@ OUTPUT="$REPO_ROOT/.build/runtime-packages"
 JOBS="$(sysctl -n hw.ncpu 2>/dev/null || echo 8)"
 INSTALL_DEPS=false
 SKIP_ENGINE_BUILD=false
+DEPS_PREFIX=""
 
 usage() {
     cat <<'EOF'
@@ -23,7 +24,8 @@ Options:
   --output <dir>        Runtime package output directory.
   --jobs <count>        Parallel build jobs.
   --install-deps        Install missing Homebrew build dependencies.
-  --skip-engine-build   Reuse an existing engine build in the workspace.
+  --dependency-prefix <dir>  Reuse a pinned x86_64 dependency prefix; otherwise build it.
+  --skip-engine-build   Reuse an existing launcher-capable engine build in the workspace.
   -h, --help            Show this help.
 EOF
 }
@@ -31,6 +33,7 @@ EOF
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --work) WORK="${2:?missing --work value}"; shift 2 ;;
+        --dependency-prefix) DEPS_PREFIX="${2:?missing --dependency-prefix value}"; shift 2 ;;
         --output) OUTPUT="${2:?missing --output value}"; shift 2 ;;
         --jobs) JOBS="${2:?missing --jobs value}"; shift 2 ;;
         --install-deps) INSTALL_DEPS=true; shift ;;
@@ -48,7 +51,7 @@ xcode-select -p >/dev/null 2>&1 || die "Xcode Command Line Tools are required"
 arch -x86_64 /usr/bin/true >/dev/null 2>&1 || die "Rosetta is required for the x86_64 engine build"
 command -v brew >/dev/null 2>&1 || die "Homebrew is required for build dependencies"
 
-for formula in bison flex mingw-w64; do
+for formula in bison flex mingw-w64 pkgconf; do
     if ! brew list --formula "$formula" >/dev/null 2>&1; then
         if [[ "$INSTALL_DEPS" == true ]]; then
             brew install "$formula"
@@ -96,6 +99,20 @@ download_verified() {
     mv "$destination.part" "$destination"
 }
 
+if [[ -z "$DEPS_PREFIX" ]]; then
+    DEPS_PREFIX="$WORK/dependencies/prefix"
+    bash "$REPO_ROOT/Tools/runtime/build-x86_64-runtime-deps.sh" \
+        --work "$WORK/dependencies" --prefix "$DEPS_PREFIX" --jobs "$JOBS"
+fi
+DEPS_PREFIX="$(cd "$DEPS_PREFIX" && pwd)"
+[[ -f "$DEPS_PREFIX/outrage-deps.lock" ]] || die "dependency prefix has no outRage lock"
+grep -Fxq 'architecture=x86_64' "$DEPS_PREFIX/outrage-deps.lock" || die "dependency prefix is not x86_64"
+for library in libgmp libnettle libhogweed libfreetype libgnutls; do
+    dylib="$(find "$DEPS_PREFIX/lib" -maxdepth 1 -type f -name "$library*.dylib" -print -quit)"
+    [[ -n "$dylib" ]] || die "dependency prefix is missing $library"
+    lipo -verify_arch x86_64 "$dylib" || die "dependency is not x86_64: $dylib"
+done
+
 log "Fetching pinned sources"
 download_verified "$CROSSOVER_URL" "$CROSSOVER_ARCHIVE" "$CROSSOVER_SHA256"
 download_verified "$DXMT_URL" "$DXMT_ARCHIVE" "$DXMT_SHA256"
@@ -124,7 +141,7 @@ EOF
     log "Applying native title identity patch"
     python3 "$REPO_ROOT/Tools/runtime/patch-winemac-native-identity.py" "$WINE_SOURCE"
 
-    BUILD_ENV="export PATH='$TOOL_PATH'; export PKG_CONFIG_LIBDIR=/nonexistent; export MACOSX_DEPLOYMENT_TARGET=14.0; export CC='clang -arch x86_64'; export CXX='clang++ -arch x86_64'; export OBJC='clang -arch x86_64'"
+    BUILD_ENV="export PATH='$TOOL_PATH'; export PKG_CONFIG_PATH=; export PKG_CONFIG_LIBDIR='$DEPS_PREFIX/lib/pkgconfig:$DEPS_PREFIX/share/pkgconfig'; export CPPFLAGS='-I$DEPS_PREFIX/include'; export LDFLAGS='-L$DEPS_PREFIX/lib -Wl,-headerpad_max_install_names'; export MACOSX_DEPLOYMENT_TARGET=14.0; export CC='clang -arch x86_64'; export CXX='clang++ -arch x86_64'; export OBJC='clang -arch x86_64'"
 
     log "Configuring x86_64 engine"
     arch -x86_64 /bin/bash -c "$BUILD_ENV
@@ -136,8 +153,8 @@ EOF
             --without-x \
             --without-vulkan \
             --without-gstreamer \
-            --without-gnutls \
-            --without-freetype \
+            --with-gnutls \
+            --with-freetype \
             --without-sdl \
             --without-krb5 \
             --without-cups \
@@ -156,6 +173,11 @@ EOF
                 die "engine configure failed"
             }
 
+    # configure discovers dylib basenames for dlopen. Resolve them using the
+    # rpaths installed by the bundler instead of an external library search path.
+    python3 "$REPO_ROOT/Tools/runtime/relocate-runtime-sonames.py" \
+        "$BUILD_ROOT/include/config.h" "$DEPS_PREFIX"
+
     log "Building x86_64 engine ($JOBS jobs)"
     arch -x86_64 /bin/bash -c "$BUILD_ENV
         cd '$BUILD_ROOT'
@@ -166,6 +188,10 @@ EOF
         }
 else
     [[ -x "$INSTALL_ROOT/bin/wine" || -x "$INSTALL_ROOT/bin/wine64" ]] || die "--skip-engine-build needs a completed install at $INSTALL_ROOT"
+    for macro in SONAME_LIBGNUTLS SONAME_LIBFREETYPE; do
+        grep -Eq "^#define $macro \"@rpath/" "$BUILD_ROOT/include/config.h" || \
+            die "--skip-engine-build requires a launcher-capable engine; rebuild without this option"
+    done
 fi
 
 log "Staging engine tree"
@@ -207,6 +233,12 @@ elif [[ -x "$ENGINE_ROOT/bin/wine" ]]; then
 fi
 [[ -n "$WINE_LOADER" ]] || die "staged engine has no executable loader"
 
+log "Bundling launcher dependencies"
+bash "$REPO_ROOT/Tools/runtime/bundle-runtime-dylibs.sh" "$DEPS_PREFIX" "$ENGINE_ROOT"
+mkdir -p "$ENGINE_ROOT/share/outrage"
+cp "$DEPS_PREFIX/outrage-deps.lock" "$ENGINE_ROOT/share/outrage/dependencies.lock"
+bash "$REPO_ROOT/Tools/runtime/audit-runtime-dylibs.sh" "$ENGINE_ROOT"
+
 log "Smoke-testing staged engine"
 WINE_VERSION_OUTPUT="$(arch -x86_64 "$WINE_LOADER" --version 2>&1)" || die "staged engine could not execute under Rosetta"
 [[ "$WINE_VERSION_OUTPUT" == wine-* ]] || die "unexpected staged engine version output: $WINE_VERSION_OUTPUT"
@@ -223,7 +255,7 @@ swift run -c release outrage runtime-build-metal \
     "$ENGINE_ROOT" \
     "$DXMT_ROOT" \
     "$RUNTIME_ID" \
-    "$CROSSOVER_VERSION+$DXMT_VERSION" \
+    "$CROSSOVER_VERSION+$DXMT_VERSION-launcher.1" \
     "$OUTPUT"
 
 log "Runtime package complete"

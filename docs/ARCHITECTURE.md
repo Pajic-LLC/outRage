@@ -115,6 +115,10 @@ A compatibility runtime is a versioned package described by a `RuntimeDescriptor
 
 The current Apple Silicon path is an **x86-64 compatibility engine executed through Rosetta** with a Metal-oriented graphics backend. The current FOSS Metal builder pins a CodeWeavers/CrossOver source package and DXMT archive by version and SHA-256.
 
+The builder constructs the pinned x86-64 dependency prefix automatically, or accepts `--dependency-prefix` to reuse an existing locked prefix. GnuTLS and FreeType are required at configure time. Their configured `dlopen` names are rewritten to `@rpath`, validated against the actual dependency files, and bundled with the engine under `lib/outrage` before packaging. Relocation adds module-relative rpaths and re-signs modified Mach-O files. The package includes the dependency lock under `share/outrage`.
+
+This is implemented plumbing, not proof that Rockstar Launcher authentication works. The final dependency-integrated artifact still must pass every package gate and a real launcher test.
+
 ### Runtime lifecycle
 
 1. Discover installed runtimes through `RuntimeCatalog`.
@@ -168,7 +172,7 @@ Runtime tooling therefore includes:
 - code-signing of modified runtime binaries;
 - package install verification;
 - real Win32 execution smoke;
-- DXMT initialization smoke.
+- DXMT builtin-module smoke and actual D3D11 device-creation smoke.
 
 A package should only be uploaded after the exact installed package passes the applicable gates.
 

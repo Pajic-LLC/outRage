@@ -633,10 +633,10 @@ Tasks:
 - [x] Add pinned x86-64 dependency builder.
 - [x] Add runtime dylib relocation/signing tool.
 - [ ] Resolve the current dependency CI result and fix any real build errors.
-- [ ] Integrate the pinned GnuTLS/FreeType dependency prefix into the engine build rather than keeping the final launcher runtime configured `--without-gnutls --without-freetype`.
-- [ ] Bundle all required dependency dylibs into the runtime.
+- [ ] Prove the dependency-integrated engine build. Implementation now builds/reuses a locked x86-64 prefix, requires GnuTLS/FreeType, and rewrites their configured `dlopen` names to `@rpath`; a complete x86-64 artifact run is pending.
+- [ ] Prove all dependency dylibs in the real runtime package. The builder now invokes relocation/signing before staging smoke/packaging and includes the dependency lock; native transitive-load regression passes.
 - [ ] Re-run portability audit on the exact dependency-integrated package.
-- [ ] Require packaged DXMT smoke to pass.
+- [ ] Require packaged DXMT module-load and real D3D11 device-creation smoke to pass. Both are now wired into the workflow.
 - [ ] Require packaged Win32 PE smoke to pass.
 - [ ] Preserve runtime signing after relocation.
 - [ ] Upload the exact passing artifact.
@@ -858,10 +858,11 @@ This lane exists so dependency failures can fail faster than a full compatibilit
 2. install that package through `outrage runtime-install`;
 3. resolve the installed runtime;
 4. audit runtime dylib self-containment;
-5. run DXMT initialization smoke;
-6. run real Windows execution smoke;
-7. inspect/checksum the package;
-8. upload only after the gates pass.
+5. run DXMT builtin-module smoke;
+6. create a real D3D11 device through the installed runtime;
+7. run real Windows execution smoke;
+8. inspect/checksum the package;
+9. upload only after the gates pass.
 
 ### Expensive-build rule
 
@@ -1011,9 +1012,9 @@ This is the queue to follow unless new evidence makes a higher item invalid.
 
 1. **Prove the dependency isolation fix in a fresh Runtime Dependencies run.** The original failure was ARM Homebrew Brotli/Zstd contamination during GnuTLS installation; inspect the new run before claiming the x86-64 prefix works.
 2. **Prove the spaced-path audit fix in a fresh Runtime Build run.** Build #5 stopped before auditing; capture the actual portability, DXMT, and Win32 results now that the complete runtime path reaches the auditor.
-3. **Integrate the pinned x86-64 dependency prefix into the real engine/runtime build.** The launcher-ready runtime cannot remain configured without GnuTLS/FreeType. The pinned Wine source loads both via `dlopen` (`SONAME_LIBGNUTLS` / `SONAME_LIBFREETYPE`); ensure those names resolve inside the relocated package, not merely that link-time references are rewritten.
-4. **Bundle/relocate/re-sign the dependency dylibs into the runtime package.**
-5. **Run the complete M2 gate on the dependency-integrated package:** install its own ZIP, portability audit, DXMT smoke, Win32 PE smoke. The CLI DXMT check currently proves builtin module loading, not GPU device creation; also exercise the existing `smoke-d3d11-runtime.sh` before claiming graphics initialization.
+3. **Prove the newly integrated launcher runtime on the final commit.** The builder now constructs/reuses the pinned prefix, enables GnuTLS/FreeType, validates both configured SONAMEs against that prefix, and changes them to relocatable `@rpath` names. It rejects reuse of an older dependency-disabled engine. The new package version is `26.3.0+v0.80-launcher.1`; do not confuse it with the stripped foundation package.
+4. **Inspect the integrated package bundling result.** The builder now relocates/signs the full engine and copies the dependency lock before packaging. GnuTLS uses `/dev/null` as its default priority-file path, consistent with the pinned Wine behavior, to avoid compiling the dependency prefix into runtime configuration; certificate verification remains enabled.
+5. **Run the complete M2 gate on the dependency-integrated package:** install its own ZIP, portability audit, DXMT smoke, Win32 PE smoke. The CLI DXMT check proves builtin module loading, not GPU device creation; the workflow now additionally runs `smoke-d3d11-runtime.sh`. Neither graphics initialization nor launcher functionality is proven until those gates and real vendor flows pass.
 6. **Create the first real Tier-3 reference title profile.** Keep product/process paths and launch policy in profile data.
 7. **Run a real managed-launcher first-run:** installer → login → game install into mapped storage → launch.
 8. **Prove title bootstrap if available, otherwise launcher fallback.** Do not invent undocumented entitlement shortcuts.

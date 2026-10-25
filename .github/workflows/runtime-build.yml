@@ -5,7 +5,8 @@ on:
   push:
     branches: [feat/runtime-foundation]
     paths:
-      - Tools/runtime/build-foss-metal-runtime.sh
+      - Tools/runtime/**
+      - '!Tools/runtime/test-*'
       - .github/workflows/runtime-build.yml
 
 permissions:
@@ -40,6 +41,11 @@ jobs:
           bash Tools/runtime/audit-runtime-dylibs.sh "$RUNTIME_ROOT"
       - name: Smoke-test DXMT initialization
         run: swift run -c release outrage runtime-smoke-dxmt outrage-metal-x86_64
+      - name: Smoke-test D3D11 device creation
+        run: |
+          RUNTIME_ROOT="$(swift run -c release outrage runtimes | awk -F '\t' '$1 == "outrage-metal-x86_64" { print $2; exit }')"
+          test -n "$RUNTIME_ROOT"
+          bash Tools/runtime/smoke-d3d11-runtime.sh "$RUNTIME_ROOT"
       - name: Smoke-test Windows execution
         run: bash Tools/runtime/smoke/verify-installed-runtime.sh outrage-metal-x86_64
       - name: Inspect package

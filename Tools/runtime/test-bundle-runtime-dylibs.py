@@ -27,20 +27,25 @@ class RuntimeBundlingTests(unittest.TestCase):
                 path.write_text(source)
                 subprocess.run(["xcrun", "clang", "-O2", str(path), "-o", str(output), *flags], check=True)
 
-            base = prefix / "lib/libbase.1.dylib"
+            base = prefix / "lib/libfreetype.6.dylib"
             compile_file("base.c", "int base(void) { return 42; }", base,
                          "-dynamiclib", f"-Wl,-install_name,{base}")
-            (prefix / "lib/libbase.dylib").symlink_to(base.name)
-            consumer = prefix / "lib/libconsumer.1.dylib"
+            (prefix / "lib/libfreetype.dylib").symlink_to(base.name)
+            consumer = prefix / "lib/libgnutls.30.dylib"
             compile_file("consumer.c", "extern int base(void); int value(void) { return base(); }",
                          consumer, "-dynamiclib", f"-Wl,-install_name,{consumer}", str(base))
-            (prefix / "lib/libconsumer.dylib").symlink_to(consumer.name)
+            (prefix / "lib/libgnutls.dylib").symlink_to(consumer.name)
+
+            header = work / "config.h"
+            header.write_text('#define SONAME_LIBGNUTLS "libgnutls.30.dylib"\n#define SONAME_LIBFREETYPE "libfreetype.6.dylib"\n')
+            subprocess.run(["python3", str(TOOLS / "relocate-runtime-sonames.py"), str(header), str(prefix)], check=True)
 
             compile_file("module.c", '''
 #include <dlfcn.h>
 #include <stdio.h>
+#include "config.h"
 int probe(void) {
-    void *library = dlopen("@rpath/libconsumer.1.dylib", RTLD_NOW);
+    void *library = dlopen(SONAME_LIBGNUTLS, RTLD_NOW);
     if (!library) { fprintf(stderr, "%s\\n", dlerror()); return 1; }
     int (*value)(void) = dlsym(library, "value");
     int status = value && value() == 42 ? 0 : 2;

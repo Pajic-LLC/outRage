@@ -76,7 +76,7 @@ x86_64-w64-mingw32-gcc \
     "$WORK/d3d11-smoke.c" \
     -ld3d11 -ldxgi -ldxguid -lole32 -luuid
 
-mkdir -p "$WORK/prefix/drive_c/windows/system32"
+mkdir -p "$WORK/prefix/drive_c/windows/system32" "$WORK/shaders" "$WORK/logs"
 if [[ -f "$RUNTIME_ROOT/lib/wine/x86_64-windows/winemetal.dll" ]]; then
     ln -sf "$RUNTIME_ROOT/lib/wine/x86_64-windows/winemetal.dll" \
         "$WORK/prefix/drive_c/windows/system32/winemetal.dll"

@@ -93,7 +93,7 @@ tar -xJf "$FREETYPE_ARCHIVE" -C "$SOURCES"
 
 # Search only the pinned x86_64 prefix; Homebrew pkg-config defaults can
 # otherwise select ARM libraries during the install-time libtool relink.
-COMMON_ENV="export MACOSX_DEPLOYMENT_TARGET=14.0; export CC='clang -arch x86_64'; export CXX='clang++ -arch x86_64'; export CFLAGS='-O2 -mmacosx-version-min=14.0'; export CXXFLAGS='-O2 -mmacosx-version-min=14.0'; export CPPFLAGS='-I$PREFIX/include'; export LDFLAGS='-arch x86_64 -mmacosx-version-min=14.0 -L$PREFIX/lib'; export PKG_CONFIG_PATH=; export PKG_CONFIG_LIBDIR='$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig'"
+COMMON_ENV="export MACOSX_DEPLOYMENT_TARGET=14.0; export CC='clang -arch x86_64'; export CXX='clang++ -arch x86_64'; export CFLAGS='-O2 -mmacosx-version-min=14.0'; export CXXFLAGS='-O2 -mmacosx-version-min=14.0'; export CPPFLAGS='-I$PREFIX/include'; export LDFLAGS='-arch x86_64 -mmacosx-version-min=14.0 -L$PREFIX/lib -Wl,-headerpad_max_install_names'; export PKG_CONFIG_PATH=; export PKG_CONFIG_LIBDIR='$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig'"
 
 build_autoconf() {
     local name="$1" source="$2" configure_args="$3"
@@ -135,7 +135,7 @@ log "Applying pinned GnuTLS backport"
 build_autoconf \
     "gnutls" \
     "$SOURCES/gnutls-$GNUTLS_VERSION" \
-    "--disable-doc --disable-tools --disable-cxx --disable-tests --disable-full-test-suite --disable-valgrind-tests --disable-rpath --disable-libdane --without-p11-kit --without-tpm --without-zlib --without-brotli --without-zstd --without-idn --without-libidn2 --with-included-libtasn1 --with-included-unistring"
+    "--disable-doc --disable-tools --disable-cxx --disable-tests --disable-full-test-suite --disable-valgrind-tests --disable-rpath --disable-libdane --with-system-priority-file=/dev/null --without-p11-kit --without-tpm --without-zlib --without-brotli --without-zstd --without-idn --without-libidn2 --with-included-libtasn1 --with-included-unistring"
 
 log "Verifying x86_64 dependency outputs"
 for pattern in libgmp libnettle libhogweed libfreetype libgnutls; do
