@@ -19,6 +19,8 @@ jobs:
       - uses: actions/checkout@v7
       - name: Swift version
         run: swift --version
+      - name: Validate runtime build scripts
+        run: bash -n Tools/runtime/build-foss-metal-runtime.sh
       - name: Test
         run: swift test
       - name: Build release tools
