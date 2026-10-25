@@ -30,15 +30,45 @@ public struct RuntimeFileMapping: Codable, Equatable, Sendable {
     }
 
     public func validate() throws {
-        guard Self.isManagedRelativePath(source) else {
+        guard ManagedRelativePath.isValid(source) else {
             throw RuntimeDescriptorError.invalidFileMapping(source)
         }
-        guard Self.isManagedRelativePath(destination) else {
+        guard ManagedRelativePath.isValid(destination) else {
             throw RuntimeDescriptorError.invalidFileMapping(destination)
         }
     }
+}
 
-    private static func isManagedRelativePath(_ value: String) -> Bool {
+public struct RuntimePathMapping: Codable, Equatable, Sendable {
+    public var sourceScope: RuntimeFileScope
+    public var source: String
+    public var destinationScope: RuntimeFileScope
+    public var destination: String
+
+    public init(
+        sourceScope: RuntimeFileScope,
+        source: String = ".",
+        destinationScope: RuntimeFileScope,
+        destination: String
+    ) {
+        self.sourceScope = sourceScope
+        self.source = source
+        self.destinationScope = destinationScope
+        self.destination = destination
+    }
+
+    public func validate() throws {
+        guard ManagedRelativePath.isValid(source) else {
+            throw RuntimeDescriptorError.invalidPathMapping(source)
+        }
+        guard ManagedRelativePath.isValid(destination) else {
+            throw RuntimeDescriptorError.invalidPathMapping(destination)
+        }
+    }
+}
+
+private enum ManagedRelativePath {
+    static func isValid(_ value: String) -> Bool {
         !value.isEmpty && !value.hasPrefix("/") && !value.split(separator: "/").contains("..")
     }
 }
@@ -59,9 +89,7 @@ public struct RuntimeCommandDescriptor: Codable, Equatable, Sendable {
     }
 
     public func validate() throws {
-        guard !executable.isEmpty,
-              !executable.hasPrefix("/"),
-              !executable.split(separator: "/").contains("..") else {
+        guard ManagedRelativePath.isValid(executable) else {
             throw RuntimeDescriptorError.invalidRuntimeCommand(executable)
         }
     }
@@ -95,6 +123,7 @@ public struct RuntimeDescriptor: Codable, Equatable, Sendable {
     public var argumentPrefix: [String]
     public var environment: [String: String]
     public var prefixInitializer: RuntimeCommandDescriptor?
+    public var pathMappings: [RuntimePathMapping]?
     public var supportedCPUBackends: [CPUBackend]
     public var supportedGraphicsBackends: [GraphicsBackend]
     public var cpuConfigurations: [String: RuntimeBackendConfiguration]?
@@ -108,6 +137,7 @@ public struct RuntimeDescriptor: Codable, Equatable, Sendable {
         argumentPrefix: [String] = [],
         environment: [String: String] = [:],
         prefixInitializer: RuntimeCommandDescriptor? = nil,
+        pathMappings: [RuntimePathMapping]? = nil,
         supportedCPUBackends: [CPUBackend] = [.native, .rosetta, .fex],
         supportedGraphicsBackends: [GraphicsBackend] = [.metal, .dxmt, .d3dMetal],
         cpuConfigurations: [String: RuntimeBackendConfiguration]? = nil,
@@ -120,6 +150,7 @@ public struct RuntimeDescriptor: Codable, Equatable, Sendable {
         self.argumentPrefix = argumentPrefix
         self.environment = environment
         self.prefixInitializer = prefixInitializer
+        self.pathMappings = pathMappings
         self.supportedCPUBackends = supportedCPUBackends
         self.supportedGraphicsBackends = supportedGraphicsBackends
         self.cpuConfigurations = cpuConfigurations
@@ -133,13 +164,14 @@ public struct RuntimeDescriptor: Codable, Equatable, Sendable {
         guard !id.isEmpty else {
             throw RuntimeDescriptorError.emptyID
         }
-        guard !executable.isEmpty, !executable.hasPrefix("/"), !executable.split(separator: "/").contains("..") else {
+        guard ManagedRelativePath.isValid(executable) else {
             throw RuntimeDescriptorError.executableMustBeRelative(executable)
         }
         if let revision, revision < 1 {
             throw RuntimeDescriptorError.invalidRevision(revision)
         }
         try prefixInitializer?.validate()
+        try pathMappings?.forEach { try $0.validate() }
         guard !supportedCPUBackends.isEmpty else {
             throw RuntimeDescriptorError.noCPUBackends
         }
@@ -185,6 +217,7 @@ public enum RuntimeDescriptorError: Error, Equatable, CustomStringConvertible {
     case invalidCPUConfiguration(String)
     case invalidGraphicsConfiguration(String)
     case invalidFileMapping(String)
+    case invalidPathMapping(String)
 
     public var description: String {
         switch self {
@@ -198,6 +231,7 @@ public enum RuntimeDescriptorError: Error, Equatable, CustomStringConvertible {
         case .invalidCPUConfiguration(let value): return "Invalid CPU backend configuration: \(value)"
         case .invalidGraphicsConfiguration(let value): return "Invalid graphics backend configuration: \(value)"
         case .invalidFileMapping(let value): return "Runtime file mapping must use a managed relative path: \(value)"
+        case .invalidPathMapping(let value): return "Runtime path mapping must use a managed relative path: \(value)"
         }
     }
 }
