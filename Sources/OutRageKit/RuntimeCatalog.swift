@@ -33,8 +33,15 @@ public struct RuntimeCatalog: Sendable {
 
             let descriptorURL = root.appendingPathComponent("runtime.json")
             guard fileManager.fileExists(atPath: descriptorURL.path) else { continue }
+            guard let descriptor = try? RuntimeDescriptorLoader.load(from: descriptorURL) else {
+                continue
+            }
 
-            let descriptor = try RuntimeDescriptorLoader.load(from: descriptorURL)
+            let executableURL = root.appendingPathComponent(descriptor.executable)
+            guard fileManager.isExecutableFile(atPath: executableURL.path) else {
+                continue
+            }
+
             result.append(InstalledRuntime(descriptor: descriptor, rootURL: root))
         }
 
