@@ -22,6 +22,19 @@ public struct ProcessHandoffMonitor: Sendable {
             .map(\.pid))
     }
 
+    public func targetIfPresent(
+        commandContains needle: String,
+        launcherPID: Int32?,
+        excluding baselinePIDs: Set<Int32>
+    ) throws -> ProcessSnapshot? {
+        ProcessHandoffResolver.selectTarget(
+            commandContains: needle,
+            launcherPID: launcherPID,
+            excluding: baselinePIDs,
+            snapshots: try snapshotProvider()
+        )
+    }
+
     public func waitForTarget(
         commandContains needle: String,
         launcherPID: Int32?,
@@ -33,12 +46,10 @@ public struct ProcessHandoffMonitor: Sendable {
         let deadline = clock.now.advanced(by: timeout)
 
         while clock.now < deadline {
-            let snapshots = try snapshotProvider()
-            if let target = ProcessHandoffResolver.selectTarget(
+            if let target = try targetIfPresent(
                 commandContains: needle,
                 launcherPID: launcherPID,
-                excluding: baselinePIDs,
-                snapshots: snapshots
+                excluding: baselinePIDs
             ) {
                 return target
             }
