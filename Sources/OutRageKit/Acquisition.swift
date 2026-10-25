@@ -42,7 +42,10 @@ public struct AcquisitionDescriptor: Codable, Equatable, Sendable {
     public func validate() throws {
         switch kind {
         case .managedLauncher:
-            guard installerURL != nil else { throw AcquisitionError.installerURLRequired }
+            guard let installerURL else { throw AcquisitionError.installerURLRequired }
+            guard installerURL.isFileURL || installerURL.scheme?.lowercased() == "https" else {
+                throw AcquisitionError.insecureInstallerURL
+            }
             if let installerSHA256,
                installerSHA256.range(of: #"^[a-fA-F0-9]{64}$"#, options: .regularExpression) == nil {
                 throw AcquisitionError.invalidInstallerSHA256
@@ -125,6 +128,7 @@ public enum AcquisitionPlanner {
 public enum AcquisitionError: Error, Equatable, CustomStringConvertible {
     case notConfigured
     case installerURLRequired
+    case insecureInstallerURL
     case invalidInstallerSHA256
     case invalidManagedLauncherExecutable(String)
     case steamAppIDRequired
@@ -133,6 +137,7 @@ public enum AcquisitionError: Error, Equatable, CustomStringConvertible {
         switch self {
         case .notConfigured: return "No acquisition method is configured"
         case .installerURLRequired: return "Managed launcher acquisition requires an installer URL"
+        case .insecureInstallerURL: return "Managed launcher installer URL must use HTTPS"
         case .invalidInstallerSHA256: return "Installer SHA-256 must be 64 hexadecimal characters"
         case .invalidManagedLauncherExecutable(let value): return "Managed launcher executable must use a relative prefix path: \(value)"
         case .steamAppIDRequired: return "Steam acquisition requires a valid app identifier"
