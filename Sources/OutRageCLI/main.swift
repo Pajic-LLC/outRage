@@ -25,6 +25,10 @@ struct OutRageCLI {
             print("architecture: \(host.architecture)")
             print("os: \(host.operatingSystemVersion)")
             print("metal: \(host.hasMetal ? "yes" : "no")")
+            print("metal-device: \(host.metalDeviceName ?? "unknown")")
+            print("unified-memory: \(describe(host.hasUnifiedMemory))")
+            print("physical-memory: \(host.physicalMemory)")
+            print("metal-working-set: \(host.metalRecommendedMaxWorkingSetSize.map(String.init) ?? "unknown")")
             print("rosetta: \(host.hasRosetta ? "yes" : "no")")
             print("preferred-cpu: \(host.recommendedCPUBackend.rawValue)")
 
@@ -45,6 +49,19 @@ struct OutRageCLI {
                 }
             }
 
+        case "runtime-build-metal":
+            guard arguments.count == 6 else {
+                throw CLIError.usage("runtime-build-metal <engine-dir> <backend-dir> <runtime-id> <version> <output-dir>")
+            }
+            let artifacts = try BuiltinMetalRuntimeBuilder.build(
+                engineRoot: URL(fileURLWithPath: arguments[1], isDirectory: true),
+                backendRoot: URL(fileURLWithPath: arguments[2], isDirectory: true),
+                runtimeIdentifier: arguments[3],
+                version: arguments[4],
+                outputDirectory: URL(fileURLWithPath: arguments[5], isDirectory: true)
+            )
+            printPackage(artifacts)
+
         case "runtime-pack":
             guard arguments.count == 4 else {
                 throw CLIError.usage("runtime-pack <runtime-directory> <version> <output-directory>")
@@ -54,9 +71,7 @@ struct OutRageCLI {
                 version: arguments[2],
                 outputDirectory: URL(fileURLWithPath: arguments[3], isDirectory: true)
             )
-            print("archive: \(artifacts.archiveURL.path)")
-            print("manifest: \(artifacts.manifestURL.path)")
-            print("sha256: \(artifacts.manifest.archiveSHA256)")
+            printPackage(artifacts)
 
         case "runtime-install":
             guard arguments.count == 3 else {
@@ -129,8 +144,12 @@ struct OutRageCLI {
         }
 
         let profile = try ProfileLoader.load(from: URL(fileURLWithPath: profilePath))
-        let session = try LaunchSessionBuilder.prepare(profile: profile)
-        let running = try ProcessRunner.start(session.command)
+        let paths = RuntimePaths()
+        let session = try LaunchSessionBuilder.prepare(profile: profile, paths: paths)
+        let running = try ProcessRunner.start(
+            session.command,
+            outputURL: paths.logURL(for: profile.id)
+        )
         print("launched: pid \(running.processIdentifier)")
 
         if wait {
@@ -181,6 +200,17 @@ struct OutRageCLI {
         print(app.path)
     }
 
+    static func printPackage(_ artifacts: RuntimePackageArtifacts) {
+        print("archive: \(artifacts.archiveURL.path)")
+        print("manifest: \(artifacts.manifestURL.path)")
+        print("sha256: \(artifacts.manifest.archiveSHA256)")
+    }
+
+    static func describe(_ value: Bool?) -> String {
+        guard let value else { return "unknown" }
+        return value ? "yes" : "no"
+    }
+
     static func describe(_ action: AcquisitionAction) -> String {
         switch action {
         case let .managedLauncher(sourceURL, _, destinationURL, arguments, targetRoot):
@@ -207,18 +237,19 @@ struct OutRageCLI {
         print("""
         outRage developer utility
 
-          doctor                                        Inspect host capabilities
-          paths                                         Create and print runtime data path
-          runtimes                                      List installed runtimes
-          runtime-pack <dir> <version> <output-dir>     Build a verified runtime package
-          runtime-install <zip> <manifest.json>         Install a verified runtime package
-          validate <profile.json>                       Validate a target profile
-          plan <profile.json>                           Resolve a launch plan
-          prepare <profile.json>                        Resolve a complete launch session
-          acquisition-plan <profile.json>               Resolve target acquisition
-          probe <windows-executable>                    Inspect a PE target
-          launch <profile.json> [--wait]                Launch a configured target
-          bundle <profile.json> [...]                   Build a native .app wrapper
+          doctor                                                    Inspect host capabilities
+          paths                                                     Create and print runtime data path
+          runtimes                                                  List installed runtimes
+          runtime-build-metal <engine> <backend> <id> <ver> <out>  Compose and package a Metal runtime
+          runtime-pack <dir> <version> <output-dir>                 Build a verified runtime package
+          runtime-install <zip> <manifest.json>                     Install a verified runtime package
+          validate <profile.json>                                   Validate a target profile
+          plan <profile.json>                                       Resolve a launch plan
+          prepare <profile.json>                                    Resolve a complete launch session
+          acquisition-plan <profile.json>                           Resolve target acquisition
+          probe <windows-executable>                                Inspect a PE target
+          launch <profile.json> [--wait]                            Launch a configured target
+          bundle <profile.json> [...]                               Build a native .app wrapper
         """)
     }
 }
