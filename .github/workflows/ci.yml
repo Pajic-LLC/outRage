@@ -22,6 +22,8 @@ jobs:
       - name: Validate runtime tooling
         run: |
           bash -n Tools/runtime/build-foss-metal-runtime.sh
+          bash -n Tools/runtime/build-x86_64-runtime-deps.sh
+          bash -n Tools/runtime/bundle-runtime-dylibs.sh
           bash -n Tools/runtime/audit-runtime-dylibs.sh
           bash -n Tools/runtime/smoke/verify-installed-runtime.sh
           python3 -m py_compile Tools/runtime/patch-winemac-native-identity.py
