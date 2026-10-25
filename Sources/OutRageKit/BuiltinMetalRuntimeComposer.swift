@@ -34,11 +34,6 @@ public enum BuiltinMetalRuntimeComposer {
         try copyDirectoryPreservingLayout(from: engineRoot, to: outputRoot)
 
         let wineExecutable = try chooseEngineExecutable(in: outputRoot, fileManager: fileManager)
-        let wineboot = try requireRelativeExecutable(
-            candidates: ["bin/wineboot", "bin/wineboot.exe"],
-            root: outputRoot,
-            fileManager: fileManager
-        )
 
         let unixDirectory = outputRoot.appendingPathComponent("lib/wine/x86_64-unix", isDirectory: true)
         let windowsDirectory = outputRoot.appendingPathComponent("lib/wine/x86_64-windows", isDirectory: true)
@@ -66,14 +61,15 @@ public enum BuiltinMetalRuntimeComposer {
             environment: [
                 "WINEPREFIX": "${PREFIX_ROOT}",
                 "WINEDEBUG": "-all",
+                "WINEDLLOVERRIDES": "mscoree,mshtml=",
                 "DXMT_SHADER_CACHE_PATH": "${CACHE_ROOT}/dxmt-shaders",
                 "DXMT_LOG_PATH": "${CACHE_ROOT}/dxmt-logs",
                 "DXMT_LOG_LEVEL": "error",
                 "OUTRAGE_TARGET_DRIVE": "O:"
             ],
             prefixInitializer: RuntimeCommandDescriptor(
-                executable: wineboot,
-                arguments: ["--init"]
+                executable: wineExecutable,
+                arguments: ["wineboot", "--init"]
             ),
             pathMappings: [
                 RuntimePathMapping(
