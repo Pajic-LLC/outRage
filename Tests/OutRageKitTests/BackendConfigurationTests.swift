@@ -66,6 +66,63 @@ import Testing
     #expect(command.environment["RENDER_CACHE"] == "/tmp/cache")
 }
 
+@Test func profileEnvironmentOverridesRuntimeAndCPUBackendDefaults() throws {
+    let profile = RuntimeProfile(
+        id: "override-test",
+        displayName: "Override Test",
+        bundleIdentifier: "com.pajic.override-test",
+        executable: "target.exe",
+        cpu: .rosetta,
+        graphics: .dxmt,
+        environment: [
+            "ROSETTA_ADVERTISE_AVX": "0",
+            "SHARED": "profile"
+        ]
+    )
+    let host = HostCapabilities(
+        architecture: "arm64",
+        operatingSystemVersion: "test",
+        hasMetal: true,
+        hasRosetta: true
+    )
+    let targetRoot = URL(fileURLWithPath: "/tmp/override-target")
+    let plan = try LaunchPlanner.makePlan(profile: profile, targetRoot: targetRoot, host: host)
+    let runtime = RuntimeDescriptor(
+        id: "override-runtime",
+        executable: "bin/runtime",
+        environment: [
+            "ROSETTA_ADVERTISE_AVX": "runtime",
+            "SHARED": "runtime"
+        ],
+        supportedCPUBackends: [.rosetta],
+        supportedGraphicsBackends: [.dxmt],
+        cpuConfigurations: [
+            "rosetta": RuntimeBackendConfiguration(
+                environment: [
+                    "ROSETTA_ADVERTISE_AVX": "1",
+                    "SHARED": "cpu"
+                ]
+            )
+        ]
+    )
+    let context = RuntimeLaunchContext(
+        runtimeRoot: URL(fileURLWithPath: "/tmp/runtime"),
+        targetRoot: targetRoot,
+        prefixRoot: URL(fileURLWithPath: "/tmp/prefix"),
+        cacheRoot: URL(fileURLWithPath: "/tmp/cache")
+    )
+
+    let command = try LaunchCommandBuilder.make(
+        plan: plan,
+        runtime: runtime,
+        runtimeRoot: context.runtimeRoot,
+        context: context
+    )
+
+    #expect(command.environment["ROSETTA_ADVERTISE_AVX"] == "0")
+    #expect(command.environment["SHARED"] == "profile")
+}
+
 @Test func automaticCPUResolutionPrefersRosettaOnAppleSiliconToday() throws {
     let runtime = RuntimeDescriptor(
         id: "multi-cpu",
