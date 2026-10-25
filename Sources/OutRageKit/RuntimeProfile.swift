@@ -12,6 +12,8 @@ public enum GraphicsBackend: String, Codable, Sendable, CaseIterable {
     case metal
     case dxmt
     case d3dMetal
+    case dxvk
+    case vkd3d
 }
 
 public enum RuntimeKind: String, Codable, Sendable {
