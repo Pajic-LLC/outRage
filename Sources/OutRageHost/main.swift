@@ -40,13 +40,24 @@ struct OutRageHostApp: App {
             }
 
             let profile = try ProfileLoader.load(from: profileURL)
-            state = .preparing(profile.displayName)
+            let paths = RuntimePaths()
 
-            do {
-                try launchTarget(profile)
-            } catch LaunchSessionError.targetExecutableMissing {
-                try await beginSetupIfAvailable(profile)
+            if profile.runtime == .compatibility {
+                state = .preparingRuntime(profile.displayName)
+                _ = try await RuntimeBootstrap.ensureInstalled(
+                    for: profile,
+                    paths: paths
+                )
             }
+
+            state = .preparing(profile.displayName)
+            do {
+                try launchTarget(profile, paths: paths)
+            } catch LaunchSessionError.targetExecutableMissing {
+                try await beginSetupIfAvailable(profile, paths: paths)
+            }
+        } catch RuntimeBootstrapError.packageSourceMissing {
+            state = .needsSetup("Runtime setup is required")
         } catch is RuntimeCatalogError {
             state = .needsSetup("Runtime setup is required")
         } catch LaunchSessionError.runtimeExecutableMissing {
@@ -57,8 +68,10 @@ struct OutRageHostApp: App {
     }
 
     @MainActor
-    private func launchTarget(_ profile: RuntimeProfile) throws {
-        let paths = RuntimePaths()
+    private func launchTarget(
+        _ profile: RuntimeProfile,
+        paths: RuntimePaths = RuntimePaths()
+    ) throws {
         let session = try LaunchSessionBuilder.prepare(profile: profile, paths: paths)
         state = .launching(profile.displayName)
 
@@ -83,7 +96,10 @@ struct OutRageHostApp: App {
     }
 
     @MainActor
-    private func beginSetupIfAvailable(_ profile: RuntimeProfile) async throws {
+    private func beginSetupIfAvailable(
+        _ profile: RuntimeProfile,
+        paths: RuntimePaths
+    ) async throws {
         guard let acquisition = profile.acquisition else {
             state = .needsSetup("Target files are not installed")
             return
@@ -91,7 +107,6 @@ struct OutRageHostApp: App {
 
         switch acquisition.kind {
         case .managedLauncher:
-            let paths = RuntimePaths()
             state = .downloadingSetup(profile.displayName)
             let installerURL = try await ManagedLauncherBootstrap.prepareInstaller(
                 profile: profile,
@@ -115,7 +130,7 @@ struct OutRageHostApp: App {
                         .appendingPathComponent(profile.executable)
                     if FileManager.default.fileExists(atPath: targetURL.path) {
                         do {
-                            try launchTarget(profile)
+                            try launchTarget(profile, paths: paths)
                         } catch {
                             state = .error(String(describing: error))
                         }
@@ -136,9 +151,10 @@ struct OutRageHostApp: App {
             }
             _ = try TargetImporter.linkExisting(
                 sourceDirectory: directory,
-                profile: profile
+                profile: profile,
+                paths: paths
             )
-            try launchTarget(profile)
+            try launchTarget(profile, paths: paths)
         }
     }
 
@@ -158,6 +174,7 @@ struct OutRageHostApp: App {
 
 private enum HostState {
     case loading
+    case preparingRuntime(String)
     case preparing(String)
     case downloadingSetup(String)
     case runningSetup(String)
@@ -170,6 +187,7 @@ private enum HostState {
     var title: String {
         switch self {
         case .loading: return "Preparing…"
+        case .preparingRuntime(let name): return "Preparing \(name) runtime…"
         case .preparing(let name): return "Preparing \(name)…"
         case .downloadingSetup(let name): return "Preparing \(name) setup…"
         case .runningSetup(let name): return "Setting up \(name)…"
@@ -183,7 +201,8 @@ private enum HostState {
 
     var detail: String? {
         switch self {
-        case .loading, .preparing, .downloadingSetup, .runningSetup, .selectingFiles, .launching: return nil
+        case .loading, .preparingRuntime, .preparing, .downloadingSetup, .runningSetup, .selectingFiles, .launching:
+            return nil
         case .running(_, let pid): return "Process \(pid)"
         case .needsSetup(let message): return message
         case .error(let message): return message
