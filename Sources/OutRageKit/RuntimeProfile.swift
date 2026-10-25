@@ -33,6 +33,7 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
     public var workingDirectory: String?
     public var runtime: RuntimeKind
     public var runtimeIdentifier: String?
+    public var runtimePackageSource: RuntimePackageSource?
     public var launcher: LauncherMode
     public var cpu: CPUBackend
     public var graphics: GraphicsBackend
@@ -49,6 +50,7 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
         workingDirectory: String? = nil,
         runtime: RuntimeKind = .compatibility,
         runtimeIdentifier: String? = nil,
+        runtimePackageSource: RuntimePackageSource? = nil,
         launcher: LauncherMode = .managed,
         cpu: CPUBackend = .auto,
         graphics: GraphicsBackend = .auto,
@@ -64,6 +66,7 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
         self.workingDirectory = workingDirectory
         self.runtime = runtime
         self.runtimeIdentifier = runtimeIdentifier
+        self.runtimePackageSource = runtimePackageSource
         self.launcher = launcher
         self.cpu = cpu
         self.graphics = graphics
@@ -97,6 +100,16 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
                 throw ProfileValidationError.invalidRuntimeIdentifier(runtimeIdentifier)
             }
         }
+        if let runtimePackageSource {
+            try runtimePackageSource.validate()
+            if let runtimeIdentifier,
+               runtimeIdentifier != runtimePackageSource.manifest.runtimeIdentifier {
+                throw ProfileValidationError.runtimePackageIdentifierMismatch(
+                    expected: runtimeIdentifier,
+                    actual: runtimePackageSource.manifest.runtimeIdentifier
+                )
+            }
+        }
         try acquisition?.validate()
     }
 }
@@ -109,6 +122,7 @@ public enum ProfileValidationError: Error, Equatable, CustomStringConvertible {
     case executableMustBeRelative(String)
     case workingDirectoryMustBeRelative(String)
     case invalidRuntimeIdentifier(String)
+    case runtimePackageIdentifierMismatch(expected: String, actual: String)
 
     public var description: String {
         switch self {
@@ -119,6 +133,8 @@ public enum ProfileValidationError: Error, Equatable, CustomStringConvertible {
         case .executableMustBeRelative(let value): return "Executable path must be relative: \(value)"
         case .workingDirectoryMustBeRelative(let value): return "Working directory must be relative: \(value)"
         case .invalidRuntimeIdentifier(let value): return "Invalid runtime identifier: \(value)"
+        case .runtimePackageIdentifierMismatch(let expected, let actual):
+            return "Runtime package identifier mismatch: expected \(expected), found \(actual)"
         }
     }
 }
