@@ -23,7 +23,7 @@ static void process_name(DWORD pid, char *name, size_t size) {
 static BOOL CALLBACK window_state(HWND window, LPARAM unused) {
     DWORD pid;
     RECT rect;
-    char name[128], class_name[128];
+    char name[128] = {0}, class_name[128] = {0};
     (void)unused;
     GetWindowThreadProcessId(window, &pid);
     process_name(pid, name, sizeof(name));
