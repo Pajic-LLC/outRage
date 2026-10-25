@@ -46,4 +46,4 @@ On the physical M2 Pro / 16 GiB / macOS 27.0.1, the independently CI-built copy 
 
 The downloaded game's static PE probe reports x86_64 and d3d12/dxgi. A transitional local app is built and strictly signature-verified, but has not been opened: it preserves the original test prefix ID to reuse the ongoing official download and existing login. The repository's Enhanced profile uses a distinct ID for future installs. Do not switch the running prefix's runtime or move its download until the current launcher is safely stopped.
 
-Shader-render/readback and live-game results are still pending.
+The independently built shader-render probe from run 40233022557 also passes locally: it compiles vertex/pixel shaders, creates a graphics pipeline, draws a triangle over a blue clear, fences GPU completion, and verifies all 256 readback pixels are red. This establishes this small shader/draw workload, not swap-chain presentation or the game. All artifact checksums pass. CI at 36ee36d succeeds with 82 Swift tests. Live-game results remain pending the official download.
