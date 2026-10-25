@@ -1,0 +1,109 @@
+import Foundation
+import Testing
+@testable import OutRageKit
+
+@Test func runtimeCatalogResolvesNamedRuntime() throws {
+    let fm = FileManager.default
+    let root = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    defer { try? fm.removeItem(at: root) }
+
+    let runtimes = root.appendingPathComponent("Runtimes", isDirectory: true)
+    let runtimeRoot = runtimes.appendingPathComponent("alpha", isDirectory: true)
+    let bin = runtimeRoot.appendingPathComponent("bin", isDirectory: true)
+    try fm.createDirectory(at: bin, withIntermediateDirectories: true)
+
+    let descriptor = RuntimeDescriptor(
+        id: "alpha",
+        executable: "bin/runtime",
+        supportedCPUBackends: [.rosetta],
+        supportedGraphicsBackends: [.dxmt]
+    )
+    let descriptorData = try JSONEncoder().encode(descriptor)
+    try descriptorData.write(to: runtimeRoot.appendingPathComponent("runtime.json"))
+
+    let runtimeExecutable = bin.appendingPathComponent("runtime")
+    try Data("#!/bin/sh\nexit 0\n".utf8).write(to: runtimeExecutable)
+    try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: runtimeExecutable.path)
+
+    let catalog = RuntimeCatalog(runtimesURL: runtimes)
+    let resolved = try catalog.resolve(identifier: "alpha", fileManager: fm)
+
+    #expect(resolved.descriptor.id == "alpha")
+    #expect(resolved.rootURL == runtimeRoot)
+}
+
+@Test func launchSessionResolvesInstalledRuntime() throws {
+    let fm = FileManager.default
+    let root = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    defer { try? fm.removeItem(at: root) }
+
+    let paths = RuntimePaths(baseURL: root)
+    try paths.ensureDirectories(fileManager: fm)
+
+    let runtimeRoot = paths.runtimesURL.appendingPathComponent("alpha", isDirectory: true)
+    let bin = runtimeRoot.appendingPathComponent("bin", isDirectory: true)
+    try fm.createDirectory(at: bin, withIntermediateDirectories: true)
+
+    let descriptor = RuntimeDescriptor(
+        id: "alpha",
+        executable: "bin/runtime",
+        supportedCPUBackends: [.rosetta],
+        supportedGraphicsBackends: [.dxmt]
+    )
+    try JSONEncoder().encode(descriptor).write(to: runtimeRoot.appendingPathComponent("runtime.json"))
+
+    let runtimeExecutable = bin.appendingPathComponent("runtime")
+    try Data("#!/bin/sh\nexit 0\n".utf8).write(to: runtimeExecutable)
+    try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: runtimeExecutable.path)
+
+    let targetRoot = paths.targetURL(for: "sample")
+    try fm.createDirectory(at: targetRoot, withIntermediateDirectories: true)
+    try Data().write(to: targetRoot.appendingPathComponent("target.exe"))
+
+    let profile = RuntimeProfile(
+        id: "sample",
+        displayName: "Sample",
+        bundleIdentifier: "com.pajic.sample",
+        executable: "target.exe",
+        runtimeIdentifier: "alpha",
+        cpu: .rosetta,
+        graphics: .dxmt
+    )
+    let host = HostCapabilities(
+        architecture: "arm64",
+        operatingSystemVersion: "test",
+        hasMetal: true,
+        hasRosetta: true
+    )
+
+    let session = try LaunchSessionBuilder.prepare(
+        profile: profile,
+        paths: paths,
+        host: host,
+        fileManager: fm
+    )
+
+    #expect(session.runtimeIdentifier == "alpha")
+    #expect(session.command.executableURL.path == "/usr/bin/arch")
+    #expect(session.command.arguments.prefix(2) == ["-x86_64", runtimeExecutable.path])
+}
+
+@Test func processRunnerExecutesNativeCommand() throws {
+    let fm = FileManager.default
+    let root = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try fm.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? fm.removeItem(at: root) }
+
+    let command = LaunchCommand(
+        executableURL: URL(fileURLWithPath: "/bin/sh"),
+        arguments: ["-c", "exit 0"],
+        workingDirectoryURL: root,
+        environment: ["OUTRAGE_TEST": "1"],
+        graphics: .metal
+    )
+
+    let running = try ProcessRunner.start(command, fileManager: fm)
+    running.waitUntilExit()
+
+    #expect(running.terminationStatus == 0)
+}
