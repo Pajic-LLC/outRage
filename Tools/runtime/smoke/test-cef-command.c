@@ -15,7 +15,7 @@ int main(void) {
     assert(!wcscmp(out, L"\"real.exe\" --type=renderer --use-gl=angle --use-angle=swiftshader"));
     assert(outrage_cef_command(raw, real, L"inprocess", out, 1024));
     assert(!wcsncmp(out, expected, wcslen(expected)));
-    assert(!wcscmp(out + wcslen(expected), L" --in-process-gpu"));
+    assert(!wcscmp(out + wcslen(expected), L" --in-process-gpu --use-gl=angle --use-angle=swiftshader"));
     assert(!outrage_cef_command(raw, real, L"software", out, 10));
     assert(!outrage_cef_command(raw, real, L"unknown", out, 1024));
     assert(!outrage_cef_command(L"\"unterminated", real, L"software", out, 1024));
