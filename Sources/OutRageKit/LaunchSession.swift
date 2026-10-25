@@ -54,74 +54,22 @@ public enum LaunchSessionBuilder {
             )
         }
 
-        let catalog = RuntimeCatalog(runtimesURL: paths.runtimesURL)
-        let installed = try catalog.resolve(
-            identifier: profile.runtimeIdentifier,
+        let executableURL = paths.executableURL(for: profile)
+        let prepared = try RuntimeEnvironmentPreparer.prepare(
+            profile: profile,
+            executableForProbe: fileManager.fileExists(atPath: executableURL.path) ? executableURL : nil,
+            paths: paths,
+            host: host,
             fileManager: fileManager
         )
 
-        let runtimeExecutable = installed.rootURL.appendingPathComponent(installed.descriptor.executable)
-        guard fileManager.isExecutableFile(atPath: runtimeExecutable.path) else {
-            throw LaunchSessionError.runtimeExecutableMissing(runtimeExecutable.path)
-        }
-
-        let executableCandidate = paths.executableURL(for: profile)
-        let graphicsHints: [GraphicsAPIHint]
-        if profile.graphics == .auto,
-           fileManager.fileExists(atPath: executableCandidate.path),
-           let probe = try? PEProbe.inspect(executableCandidate, fileManager: fileManager) {
-            graphicsHints = probe.graphicsHints
-        } else {
-            graphicsHints = []
-        }
-
-        var resolvedProfile = profile
-        resolvedProfile.cpu = try BackendResolver.resolveCPU(
-            requested: profile.cpu,
-            runtime: installed.descriptor,
-            host: host
-        )
-        resolvedProfile.graphics = try BackendResolver.resolveGraphics(
-            requested: profile.graphics,
-            runtime: installed.descriptor,
-            hints: graphicsHints
-        )
-
-        let context = RuntimeLaunchContext(
-            runtimeRoot: installed.rootURL,
-            targetRoot: targetRoot,
-            prefixRoot: prefixRoot,
-            cacheRoot: paths.cacheURL(for: profile.id)
-        )
-
-        try PrefixManager.ensureInitialized(
-            runtime: installed.descriptor,
-            runtimeRoot: installed.rootURL,
-            cpu: resolvedProfile.cpu,
-            graphics: resolvedProfile.graphics,
-            context: context,
-            logURL: paths.logURL(for: profile.id),
-            fileManager: fileManager
-        )
-
-        try RuntimePathMapper.apply(
-            installed.descriptor.pathMappings ?? [],
-            context: context,
-            fileManager: fileManager
-        )
-
-        try RuntimeOverlayInstaller.apply(
-            runtime: installed.descriptor,
-            cpu: resolvedProfile.cpu,
-            graphics: resolvedProfile.graphics,
-            context: context,
-            fileManager: fileManager
-        )
-
-        let executableURL = paths.executableURL(for: resolvedProfile)
         guard fileManager.fileExists(atPath: executableURL.path) else {
             throw LaunchSessionError.targetExecutableMissing(executableURL.path)
         }
+
+        var resolvedProfile = profile
+        resolvedProfile.cpu = prepared.cpu
+        resolvedProfile.graphics = prepared.graphics
 
         let plan = try LaunchPlanner.makePlan(
             profile: resolvedProfile,
@@ -129,19 +77,52 @@ public enum LaunchSessionBuilder {
             prefixRoot: prefixRoot,
             host: host
         )
-
-        let command = try LaunchCommandBuilder.make(
+        var command = try LaunchCommandBuilder.make(
             plan: plan,
-            runtime: installed.descriptor,
-            runtimeRoot: installed.rootURL,
-            context: context
+            runtime: prepared.installedRuntime.descriptor,
+            runtimeRoot: prepared.installedRuntime.rootURL,
+            context: prepared.context
+        )
+
+        if let targetFingerprint = try? TargetBuildFingerprint.inspect(
+            executableURL: executableURL,
+            fileManager: fileManager
+        ) {
+            let cacheFingerprint = RuntimeCacheFingerprint(
+                profileID: profile.id,
+                target: targetFingerprint,
+                runtimeIdentifier: prepared.installedRuntime.descriptor.id,
+                runtimeRevision: prepared.installedRuntime.descriptor.revision ?? 1,
+                graphicsBackend: prepared.graphics
+            )
+            let cache = try RuntimeCacheManager.prepare(
+                fingerprint: cacheFingerprint,
+                paths: paths,
+                fileManager: fileManager
+            )
+            command = PerformanceLaunchTuner.tune(command, cache: cache)
+        }
+
+        let diagnostics = LaunchDiagnosticsBuilder.make(
+            profile: profile,
+            executableURL: executableURL,
+            host: host,
+            runtime: prepared.installedRuntime.descriptor,
+            cpu: prepared.cpu,
+            graphics: prepared.graphics,
+            fileManager: fileManager
+        )
+        try? LaunchDiagnosticsBuilder.write(
+            diagnostics,
+            to: paths.diagnosticsURL(for: profile.id),
+            fileManager: fileManager
         )
 
         return LaunchSession(
             profile: profile,
             plan: plan,
             command: command,
-            runtimeIdentifier: installed.descriptor.id
+            runtimeIdentifier: prepared.installedRuntime.descriptor.id
         )
     }
 }
