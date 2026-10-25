@@ -126,9 +126,8 @@ struct OutRageHostApp: App {
             runningProcess = running
             running.process.terminationHandler = { _ in
                 DispatchQueue.main.async {
-                    let targetURL = paths.targetURL(for: profile.id)
-                        .appendingPathComponent(profile.executable)
-                    if FileManager.default.fileExists(atPath: targetURL.path) {
+                    let executableURL = paths.executableURL(for: profile)
+                    if FileManager.default.fileExists(atPath: executableURL.path) {
                         do {
                             try launchTarget(profile, paths: paths)
                         } catch {
