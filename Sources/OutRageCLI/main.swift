@@ -45,6 +45,16 @@ struct OutRageCLI {
                 }
             }
 
+        case "runtime-install":
+            guard arguments.count == 3 else {
+                throw CLIError.usage("runtime-install <runtime.zip> <manifest.json>")
+            }
+            let archive = URL(fileURLWithPath: arguments[1])
+            let manifestData = try Data(contentsOf: URL(fileURLWithPath: arguments[2]))
+            let manifest = try JSONDecoder().decode(RuntimePackageManifest.self, from: manifestData)
+            let installed = try RuntimeInstaller.install(archiveURL: archive, manifest: manifest)
+            print("installed: \(installed.descriptor.id)\t\(installed.rootURL.path)")
+
         case "validate":
             guard arguments.count == 2 else { throw CLIError.usage("validate <profile.json>") }
             let profile = try ProfileLoader.load(from: URL(fileURLWithPath: arguments[1]))
@@ -66,6 +76,20 @@ struct OutRageCLI {
             print("cpu: \(session.plan.cpu.rawValue)")
             print("graphics: \(session.command.graphics.rawValue)")
             print("command: \(session.command)")
+
+        case "acquisition-plan":
+            guard arguments.count == 2 else { throw CLIError.usage("acquisition-plan <profile.json>") }
+            let profile = try ProfileLoader.load(from: URL(fileURLWithPath: arguments[1]))
+            let acquisition = try AcquisitionPlanner.makePlan(profile: profile)
+            print(describe(acquisition))
+
+        case "probe":
+            guard arguments.count == 2 else { throw CLIError.usage("probe <windows-executable>") }
+            let result = try PEProbe.inspect(URL(fileURLWithPath: arguments[1]))
+            print("architecture: \(result.architecture.rawValue)")
+            print(String(format: "machine: 0x%04x", result.machine))
+            print("size: \(result.fileSize)")
+            print("graphics: \(result.graphicsHints.map(\.rawValue).joined(separator: ","))")
 
         case "launch":
             try launch(arguments: Array(arguments.dropFirst()))
@@ -144,18 +168,43 @@ struct OutRageCLI {
         print(app.path)
     }
 
+    static func describe(_ action: AcquisitionAction) -> String {
+        switch action {
+        case let .managedLauncher(sourceURL, _, destinationURL, arguments, targetRoot):
+            return [
+                "kind: managed-launcher",
+                "source: \(sourceURL.absoluteString)",
+                "installer: \(destinationURL.path)",
+                "arguments: \(arguments.joined(separator: " "))",
+                "target: \(targetRoot.path)"
+            ].joined(separator: "\n")
+        case let .steam(appID, branch, targetRoot):
+            return [
+                "kind: steam",
+                "app-id: \(appID)",
+                "branch: \(branch ?? "default")",
+                "target: \(targetRoot.path)"
+            ].joined(separator: "\n")
+        case let .importExisting(targetRoot):
+            return "kind: import-existing\ntarget: \(targetRoot.path)"
+        }
+    }
+
     static func printHelp() {
         print("""
         outRage developer utility
 
-          doctor                         Inspect host capabilities
-          paths                          Create and print runtime data path
-          runtimes                       List installed runtimes
-          validate <profile.json>        Validate a target profile
-          plan <profile.json>            Resolve a launch plan
-          prepare <profile.json>         Resolve a complete launch session
-          launch <profile.json> [--wait] Launch a configured target
-          bundle <profile.json> [...]    Build a native .app wrapper
+          doctor                                  Inspect host capabilities
+          paths                                   Create and print runtime data path
+          runtimes                                List installed runtimes
+          runtime-install <zip> <manifest.json>   Install a verified runtime package
+          validate <profile.json>                 Validate a target profile
+          plan <profile.json>                     Resolve a launch plan
+          prepare <profile.json>                  Resolve a complete launch session
+          acquisition-plan <profile.json>         Resolve target acquisition
+          probe <windows-executable>              Inspect a PE target
+          launch <profile.json> [--wait]          Launch a configured target
+          bundle <profile.json> [...]             Build a native .app wrapper
         """)
     }
 }
