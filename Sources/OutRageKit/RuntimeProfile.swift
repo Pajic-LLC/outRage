@@ -38,6 +38,7 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
     public var graphics: GraphicsBackend
     public var arguments: [String]
     public var environment: [String: String]
+    public var acquisition: AcquisitionDescriptor?
 
     public init(
         schemaVersion: Int = 1,
@@ -52,7 +53,8 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
         cpu: CPUBackend = .auto,
         graphics: GraphicsBackend = .auto,
         arguments: [String] = [],
-        environment: [String: String] = [:]
+        environment: [String: String] = [:],
+        acquisition: AcquisitionDescriptor? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.id = id
@@ -67,6 +69,7 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
         self.graphics = graphics
         self.arguments = arguments
         self.environment = environment
+        self.acquisition = acquisition
     }
 
     public func validate() throws {
@@ -94,6 +97,7 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
                 throw ProfileValidationError.invalidRuntimeIdentifier(runtimeIdentifier)
             }
         }
+        try acquisition?.validate()
     }
 }
 
