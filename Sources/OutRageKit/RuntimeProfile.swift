@@ -49,6 +49,7 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
     public var environment: [String: String]
     public var pathMappings: [RuntimePathMapping]?
     public var processMatch: String?
+    public var performance: PerformancePolicy?
     public var acquisition: AcquisitionDescriptor?
 
     public init(
@@ -69,6 +70,7 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
         environment: [String: String] = [:],
         pathMappings: [RuntimePathMapping]? = nil,
         processMatch: String? = nil,
+        performance: PerformancePolicy? = nil,
         acquisition: AcquisitionDescriptor? = nil
     ) {
         self.schemaVersion = schemaVersion
@@ -88,6 +90,7 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
         self.environment = environment
         self.pathMappings = pathMappings
         self.processMatch = processMatch
+        self.performance = performance
         self.acquisition = acquisition
     }
 
@@ -153,6 +156,7 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
             }
         }
         try pathMappings?.forEach { try $0.validate() }
+        try performance?.validate()
         try acquisition?.validate()
     }
 }
