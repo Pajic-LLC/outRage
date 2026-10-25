@@ -1,4 +1,5 @@
 #define COBJMACROS
+#define WIDL_C_INLINE_WRAPPERS
 #include <windows.h>
 #include <d3d12.h>
 #include <d3dcompiler.h>
@@ -56,8 +57,7 @@ int main(void) {
     D3D12_DESCRIPTOR_HEAP_DESC hd = {0}; hd.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV; hd.NumDescriptors = 1;
     ID3D12DescriptorHeap *heap = NULL;
     CHECK(ID3D12Device_CreateDescriptorHeap(device, &hd, &IID_ID3D12DescriptorHeap, (void **)&heap));
-    D3D12_CPU_DESCRIPTOR_HANDLE rtv;
-    ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(heap, &rtv);
+    D3D12_CPU_DESCRIPTOR_HANDLE rtv = ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(heap);
     ID3D12Device_CreateRenderTargetView(device, texture, NULL, rtv);
     D3D12_COMMAND_QUEUE_DESC qd = {0}; qd.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
     ID3D12CommandQueue *queue = NULL;
