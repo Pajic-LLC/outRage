@@ -47,6 +47,7 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
     public var graphics: GraphicsBackend
     public var arguments: [String]
     public var environment: [String: String]
+    public var pathMappings: [RuntimePathMapping]?
     public var acquisition: AcquisitionDescriptor?
 
     public init(
@@ -65,6 +66,7 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
         graphics: GraphicsBackend = .auto,
         arguments: [String] = [],
         environment: [String: String] = [:],
+        pathMappings: [RuntimePathMapping]? = nil,
         acquisition: AcquisitionDescriptor? = nil
     ) {
         self.schemaVersion = schemaVersion
@@ -82,6 +84,7 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
         self.graphics = graphics
         self.arguments = arguments
         self.environment = environment
+        self.pathMappings = pathMappings
         self.acquisition = acquisition
     }
 
@@ -130,6 +133,7 @@ public struct RuntimeProfile: Codable, Equatable, Sendable {
                 )
             }
         }
+        try pathMappings?.forEach { try $0.validate() }
         try acquisition?.validate()
     }
 }
