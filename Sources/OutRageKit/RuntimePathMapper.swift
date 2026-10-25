@@ -28,11 +28,18 @@ public enum RuntimePathMapper {
 
             if fileManager.fileExists(atPath: destinationURL.path) ||
                 (try? destinationURL.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true {
-                let values = try? destinationURL.resourceValues(forKeys: [.isSymbolicLinkKey])
-                guard values?.isSymbolicLink == true else {
+                let values = try destinationURL.resourceValues(forKeys: [.isSymbolicLinkKey, .isDirectoryKey])
+                if values.isSymbolicLink == true {
+                    try fileManager.removeItem(at: destinationURL)
+                } else if values.isDirectory == true,
+                          try fileManager.contentsOfDirectory(atPath: destinationURL.path).isEmpty {
+                    // Launchers commonly create their configured install directory before
+                    // writing any files. An empty directory is safe to adopt into our
+                    // managed-storage mapping; anything non-empty remains protected.
+                    try fileManager.removeItem(at: destinationURL)
+                } else {
                     throw RuntimePathMapperError.destinationOccupied(destinationURL.path)
                 }
-                try fileManager.removeItem(at: destinationURL)
             }
 
             try fileManager.createSymbolicLink(
