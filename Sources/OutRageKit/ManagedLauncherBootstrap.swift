@@ -12,6 +12,20 @@ public enum ManagedLauncherBootstrap {
         return installedLauncherURL
     }
 
+    public static func targetBootstrapURL(
+        profile: RuntimeProfile,
+        paths: RuntimePaths = RuntimePaths()
+    ) throws -> URL? {
+        guard let acquisition = profile.acquisition,
+              acquisition.kind == .managedLauncher else {
+            throw ManagedLauncherBootstrapError.wrongAcquisitionKind
+        }
+        try acquisition.validate()
+        return acquisition.targetBootstrapExecutable.map {
+            paths.targetURL(for: profile.id).appendingPathComponent($0)
+        }
+    }
+
     public static func prepareInstaller(
         profile: RuntimeProfile,
         paths: RuntimePaths = RuntimePaths(),
@@ -81,6 +95,52 @@ public enum ManagedLauncherBootstrap {
         )
     }
 
+    public static func makeTargetBootstrapCommand(
+        profile: RuntimeProfile,
+        paths: RuntimePaths = RuntimePaths(),
+        host: HostCapabilities = .current(),
+        fileManager: FileManager = .default
+    ) throws -> LaunchCommand {
+        guard let acquisition = profile.acquisition,
+              acquisition.kind == .managedLauncher else {
+            throw ManagedLauncherBootstrapError.wrongAcquisitionKind
+        }
+        try acquisition.validate()
+        guard let relativeExecutable = acquisition.targetBootstrapExecutable else {
+            throw ManagedLauncherBootstrapError.targetBootstrapExecutableNotConfigured
+        }
+
+        let executableURL = paths.targetURL(for: profile.id)
+            .appendingPathComponent(relativeExecutable)
+        guard fileManager.fileExists(atPath: executableURL.path) else {
+            throw ManagedLauncherBootstrapError.targetBootstrapNotInstalled(executableURL.path)
+        }
+
+        let targetURL = paths.executableURL(for: profile)
+        let prepared = try RuntimeEnvironmentPreparer.prepare(
+            profile: profile,
+            executableForProbe: fileManager.fileExists(atPath: targetURL.path) ? targetURL : executableURL,
+            paths: paths,
+            host: host,
+            fileManager: fileManager
+        )
+        var command = try makeCommand(
+            profile: profile,
+            executableURL: executableURL,
+            arguments: acquisition.targetBootstrapArguments ?? [],
+            suffix: ".target-bootstrap",
+            prepared: prepared
+        )
+        command = try tuneForInstalledTarget(
+            command,
+            profile: profile,
+            prepared: prepared,
+            paths: paths,
+            fileManager: fileManager
+        )
+        return command
+    }
+
     public static func makeInstalledLauncherCommand(
         profile: RuntimeProfile,
         paths: RuntimePaths = RuntimePaths(),
@@ -113,28 +173,45 @@ public enum ManagedLauncherBootstrap {
             suffix: ".launcher",
             prepared: prepared
         )
+        command = try tuneForInstalledTarget(
+            command,
+            profile: profile,
+            prepared: prepared,
+            paths: paths,
+            fileManager: fileManager
+        )
+        return command
+    }
 
-        if fileManager.fileExists(atPath: targetURL.path),
-           let targetFingerprint = try? TargetBuildFingerprint.inspect(
-               executableURL: targetURL,
-               fileManager: fileManager
-           ) {
-            let cacheFingerprint = RuntimeCacheFingerprint(
-                profileID: profile.id,
-                target: targetFingerprint,
-                runtimeIdentifier: prepared.installedRuntime.descriptor.id,
-                runtimeRevision: prepared.installedRuntime.descriptor.revision ?? 1,
-                graphicsBackend: prepared.graphics
-            )
-            let cache = try RuntimeCacheManager.prepare(
-                fingerprint: cacheFingerprint,
-                paths: paths,
-                fileManager: fileManager
-            )
-            command = PerformanceLaunchTuner.tune(command, cache: cache)
+    private static func tuneForInstalledTarget(
+        _ command: LaunchCommand,
+        profile: RuntimeProfile,
+        prepared: PreparedCompatibilityRuntime,
+        paths: RuntimePaths,
+        fileManager: FileManager
+    ) throws -> LaunchCommand {
+        let targetURL = paths.executableURL(for: profile)
+        guard fileManager.fileExists(atPath: targetURL.path),
+              let targetFingerprint = try? TargetBuildFingerprint.inspect(
+                  executableURL: targetURL,
+                  fileManager: fileManager
+              ) else {
+            return command
         }
 
-        return command
+        let cacheFingerprint = RuntimeCacheFingerprint(
+            profileID: profile.id,
+            target: targetFingerprint,
+            runtimeIdentifier: prepared.installedRuntime.descriptor.id,
+            runtimeRevision: prepared.installedRuntime.descriptor.revision ?? 1,
+            graphicsBackend: prepared.graphics
+        )
+        let cache = try RuntimeCacheManager.prepare(
+            fingerprint: cacheFingerprint,
+            paths: paths,
+            fileManager: fileManager
+        )
+        return PerformanceLaunchTuner.tune(command, cache: cache)
     }
 
     private static func makeCommand(
@@ -171,6 +248,8 @@ public enum ManagedLauncherBootstrapError: Error, Equatable, CustomStringConvert
     case compatibilityRuntimeRequired
     case launcherExecutableNotConfigured
     case launcherNotInstalled(String)
+    case targetBootstrapExecutableNotConfigured
+    case targetBootstrapNotInstalled(String)
 
     public var description: String {
         switch self {
@@ -178,6 +257,8 @@ public enum ManagedLauncherBootstrapError: Error, Equatable, CustomStringConvert
         case .compatibilityRuntimeRequired: return "Managed launcher bootstrap requires a compatibility runtime"
         case .launcherExecutableNotConfigured: return "Managed launcher executable is not configured"
         case .launcherNotInstalled(let path): return "Managed launcher is not installed: \(path)"
+        case .targetBootstrapExecutableNotConfigured: return "Managed title bootstrap executable is not configured"
+        case .targetBootstrapNotInstalled(let path): return "Managed title bootstrap executable is not installed: \(path)"
         }
     }
 }
