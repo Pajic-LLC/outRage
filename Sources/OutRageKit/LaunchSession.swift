@@ -100,7 +100,12 @@ public enum LaunchSessionBuilder {
                 paths: paths,
                 fileManager: fileManager
             )
-            command = PerformanceLaunchTuner.tune(command, cache: cache)
+            command = PerformanceLaunchTuner.tune(
+                command,
+                cache: cache,
+                policy: profile.performance,
+                explicitEnvironment: profile.environment
+            )
         }
 
         let diagnostics = LaunchDiagnosticsBuilder.make(
