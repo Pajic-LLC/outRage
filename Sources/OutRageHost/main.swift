@@ -26,13 +26,13 @@ struct OutRageHostApp: App {
             }
             .frame(width: 420, height: 220)
             .padding()
-            .task { launch() }
+            .task { await launch() }
         }
         .windowResizability(.contentSize)
     }
 
     @MainActor
-    private func launch() {
+    private func launch() async {
         do {
             guard let profileURL = BundledProfile.locate() else {
                 state = .error("Missing runtime profile")
@@ -42,26 +42,11 @@ struct OutRageHostApp: App {
             let profile = try ProfileLoader.load(from: profileURL)
             state = .preparing(profile.displayName)
 
-            let session = try LaunchSessionBuilder.prepare(profile: profile)
-            state = .launching(profile.displayName)
-
-            let running = try ProcessRunner.start(session.command)
-            runningProcess = running
-            state = .running(profile.displayName, running.processIdentifier)
-
-            running.process.terminationHandler = { _ in
-                DispatchQueue.main.async {
-                    NSApplication.shared.terminate(nil)
-                }
+            do {
+                try launchTarget(profile)
+            } catch LaunchSessionError.targetExecutableMissing {
+                try await beginSetupIfAvailable(profile)
             }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                guard running.isRunning else { return }
-                NSApplication.shared.setActivationPolicy(.accessory)
-                NSApplication.shared.hide(nil)
-            }
-        } catch LaunchSessionError.targetExecutableMissing {
-            state = .needsSetup("Target files are not installed")
         } catch is RuntimeCatalogError {
             state = .needsSetup("Runtime setup is required")
         } catch LaunchSessionError.runtimeExecutableMissing {
@@ -70,11 +55,78 @@ struct OutRageHostApp: App {
             state = .error(String(describing: error))
         }
     }
+
+    @MainActor
+    private func launchTarget(_ profile: RuntimeProfile) throws {
+        let session = try LaunchSessionBuilder.prepare(profile: profile)
+        state = .launching(profile.displayName)
+
+        let running = try ProcessRunner.start(session.command)
+        runningProcess = running
+        state = .running(profile.displayName, running.processIdentifier)
+
+        running.process.terminationHandler = { _ in
+            DispatchQueue.main.async {
+                NSApplication.shared.terminate(nil)
+            }
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            guard running.isRunning else { return }
+            NSApplication.shared.setActivationPolicy(.accessory)
+            NSApplication.shared.hide(nil)
+        }
+    }
+
+    @MainActor
+    private func beginSetupIfAvailable(_ profile: RuntimeProfile) async throws {
+        guard let acquisition = profile.acquisition else {
+            state = .needsSetup("Target files are not installed")
+            return
+        }
+
+        switch acquisition.kind {
+        case .managedLauncher:
+            state = .downloadingSetup(profile.displayName)
+            let installerURL = try await ManagedLauncherBootstrap.prepareInstaller(profile: profile)
+            let command = try ManagedLauncherBootstrap.makeInstallerCommand(
+                profile: profile,
+                installerURL: installerURL
+            )
+
+            state = .runningSetup(profile.displayName)
+            let running = try ProcessRunner.start(command)
+            runningProcess = running
+            running.process.terminationHandler = { _ in
+                DispatchQueue.main.async {
+                    let targetURL = RuntimePaths().targetURL(for: profile.id)
+                        .appendingPathComponent(profile.executable)
+                    if FileManager.default.fileExists(atPath: targetURL.path) {
+                        do {
+                            try launchTarget(profile)
+                        } catch {
+                            state = .error(String(describing: error))
+                        }
+                    } else {
+                        state = .needsSetup("Finish setup in the launcher, then open this app again.")
+                    }
+                }
+            }
+
+        case .steam:
+            state = .needsSetup("Sign-in setup is required before this target can be installed.")
+
+        case .importExisting:
+            state = .needsSetup("Existing target files need to be selected before launch.")
+        }
+    }
 }
 
 private enum HostState {
     case loading
     case preparing(String)
+    case downloadingSetup(String)
+    case runningSetup(String)
     case launching(String)
     case running(String, Int32)
     case needsSetup(String)
@@ -84,6 +136,8 @@ private enum HostState {
         switch self {
         case .loading: return "Preparing…"
         case .preparing(let name): return "Preparing \(name)…"
+        case .downloadingSetup(let name): return "Preparing \(name) setup…"
+        case .runningSetup(let name): return "Setting up \(name)…"
         case .launching(let name): return "Opening \(name)…"
         case .running(let name, _): return "\(name) is running"
         case .needsSetup: return "Setup required"
@@ -93,7 +147,7 @@ private enum HostState {
 
     var detail: String? {
         switch self {
-        case .loading, .preparing, .launching: return nil
+        case .loading, .preparing, .downloadingSetup, .runningSetup, .launching: return nil
         case .running(_, let pid): return "Process \(pid)"
         case .needsSetup(let message): return message
         case .error(let message): return message
