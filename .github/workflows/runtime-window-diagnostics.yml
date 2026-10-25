@@ -2,10 +2,6 @@ name: Native Window Diagnostic Driver
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - .github/workflows/runtime-window-diagnostics.yml
-      - Tools/runtime/patch-winemac-window-diagnostics.py
 
 permissions:
   contents: read

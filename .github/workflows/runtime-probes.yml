@@ -11,6 +11,7 @@ on:
       - Tools/runtime/smoke/cef-command.h
       - Tools/runtime/smoke/cef-renderer-wrapper.c
       - Tools/runtime/smoke/test-cef-command.c
+      - Tools/runtime/smoke/d2d-window.cpp
 
 permissions:
   contents: read
@@ -59,8 +60,11 @@ jobs:
             Tools/runtime/smoke/cef-renderer-wrapper.c \
             -o "$RUNNER_TEMP/runtime-probes/cef-renderer-wrapper.exe"
           file "$RUNNER_TEMP/runtime-probes/cef-renderer-wrapper.exe" | grep -q 'PE32+.*x86-64'
+          cp Tools/runtime/smoke/d2d-window.cpp "$RUNNER_TEMP/runtime-probes/"
+          x86_64-w64-mingw32-g++ -O2 -Wall -Wextra -Werror -static-libgcc -static-libstdc++ \
+            Tools/runtime/smoke/d2d-window.cpp -o "$RUNNER_TEMP/runtime-probes/d2d-window.exe" -ld2d1 -lole32 -luuid
           cd "$RUNNER_TEMP/runtime-probes"
-          shasum -a 256 *.c *.h *.exe > SHA256SUMS
+          shasum -a 256 *.c *.h *.cpp *.exe > SHA256SUMS
       - name: Upload developer hardware probe
         uses: actions/upload-artifact@v7
         with:
