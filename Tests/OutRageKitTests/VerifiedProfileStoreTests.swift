@@ -54,9 +54,14 @@ import Testing
         fileManager: fm
     ) == updated)
 
-    var tampered = envelopeData
-    tampered.append(0x20)
-    try tampered.write(
+    var badSignature = envelope.signature
+    badSignature[0] ^= 0xff
+    let tamperedEnvelope = SignedProfileEnvelope(
+        keyID: envelope.keyID,
+        payload: envelope.payload,
+        signature: badSignature
+    )
+    try JSONEncoder().encode(tamperedEnvelope).write(
         to: VerifiedProfileStore.envelopeURL(profileID: bundled.id, paths: paths),
         options: .atomic
     )
