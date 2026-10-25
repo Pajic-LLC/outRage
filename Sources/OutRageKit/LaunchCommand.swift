@@ -66,6 +66,9 @@ public enum LaunchCommandBuilder {
 
         environment["OUTRAGE_GRAPHICS_BACKEND"] = graphics.rawValue
         environment["OUTRAGE_CPU_BACKEND"] = plan.cpu.rawValue
+        if environment["OUTRAGE_APP_NAME"] == nil {
+            environment["OUTRAGE_APP_NAME"] = plan.displayName
+        }
 
         if let context {
             environment["OUTRAGE_RUNTIME_ROOT"] = context.runtimeRoot.path
