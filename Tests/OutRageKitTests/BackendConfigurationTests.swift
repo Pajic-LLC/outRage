@@ -64,6 +64,7 @@ import Testing
     #expect(command.environment["BASE"] == "1")
     #expect(command.environment["CPU_MODE"] == "translated")
     #expect(command.environment["RENDER_CACHE"] == "/tmp/cache")
+    #expect(command.environment["OUTRAGE_APP_NAME"] == "Backend Test")
 }
 
 @Test func profileEnvironmentOverridesRuntimeAndCPUBackendDefaults() throws {
@@ -76,6 +77,7 @@ import Testing
         graphics: .dxmt,
         environment: [
             "ROSETTA_ADVERTISE_AVX": "0",
+            "OUTRAGE_APP_NAME": "Custom Native Name",
             "SHARED": "profile"
         ]
     )
@@ -120,6 +122,7 @@ import Testing
     )
 
     #expect(command.environment["ROSETTA_ADVERTISE_AVX"] == "0")
+    #expect(command.environment["OUTRAGE_APP_NAME"] == "Custom Native Name")
     #expect(command.environment["SHARED"] == "profile")
 }
 
