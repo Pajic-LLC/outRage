@@ -34,6 +34,7 @@ import Testing
     #expect(composed.descriptor.prefixInitializer?.arguments == ["wineboot", "--init"])
     #expect(composed.descriptor.supportedCPUBackends == [.rosetta])
     #expect(composed.descriptor.supportedGraphicsBackends == [.dxmt])
+    #expect(composed.descriptor.configuration(for: CPUBackend.rosetta)?.environment?["ROSETTA_ADVERTISE_AVX"] == "1")
     #expect(composed.descriptor.environment["WINEPREFIX"] == "${PREFIX_ROOT}")
     #expect(composed.descriptor.environment["WINEDLLOVERRIDES"] == "mscoree,mshtml=")
     #expect(composed.descriptor.environment["DXMT_SHADER_CACHE_PATH"] == "${CACHE_ROOT}/dxmt-shaders")
