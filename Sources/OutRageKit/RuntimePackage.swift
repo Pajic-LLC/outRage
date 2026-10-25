@@ -49,6 +49,7 @@ public enum RuntimePackageError: Error, Equatable, CustomStringConvertible {
     case invalidSHA256
     case invalidRootSubdirectory(String)
     case checksumMismatch
+    case packagingFailed(Int32)
     case extractionFailed(Int32)
     case descriptorMissing
     case descriptorIdentifierMismatch(expected: String, actual: String)
@@ -61,6 +62,7 @@ public enum RuntimePackageError: Error, Equatable, CustomStringConvertible {
         case .invalidSHA256: return "Runtime package SHA-256 must be 64 hexadecimal characters"
         case .invalidRootSubdirectory(let value): return "Invalid runtime package root: \(value)"
         case .checksumMismatch: return "Runtime package checksum does not match"
+        case .packagingFailed(let status): return "Runtime package creation failed with status \(status)"
         case .extractionFailed(let status): return "Runtime package extraction failed with status \(status)"
         case .descriptorMissing: return "Runtime package does not contain runtime.json"
         case .descriptorIdentifierMismatch(let expected, let actual):
