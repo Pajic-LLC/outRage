@@ -65,7 +65,7 @@ while IFS= read -r -d '' candidate; do
     done < <(
         otool -L "$candidate" 2>/dev/null |
             tail -n +2 |
-            sed -E 's/^[[:space:]]*([^[:space:]]+).*/\1/'
+            sed -E 's/^[[:space:]]+//; s/ \(compatibility version.*$//'
     )
 
     case "$candidate" in

@@ -29,6 +29,7 @@ jobs:
           python3 -m py_compile Tools/runtime/patch-winemac-native-identity.py
           python3 Tools/runtime/test-patch-winemac-native-identity.py
           python3 Tools/runtime/test-runtime-audit-workflow.py
+          python3 Tools/runtime/test-bundle-runtime-dylibs.py
       - name: Test
         run: swift test
       - name: Build release tools
