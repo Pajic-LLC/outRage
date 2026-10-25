@@ -28,7 +28,7 @@ import Testing
     let resolved = try catalog.resolve(identifier: "alpha", fileManager: fm)
 
     #expect(resolved.descriptor.id == "alpha")
-    #expect(resolved.rootURL == runtimeRoot)
+    #expect(resolved.rootURL.resolvingSymlinksInPath() == runtimeRoot.resolvingSymlinksInPath())
 }
 
 @Test func launchSessionResolvesInstalledRuntimeAndPaths() throws {
@@ -86,9 +86,12 @@ import Testing
 
     #expect(session.runtimeIdentifier == "alpha")
     #expect(session.command.executableURL.path == "/usr/bin/arch")
-    #expect(session.command.arguments.prefix(4) == ["-x86_64", runtimeExecutable.path, "--prefix", paths.prefixURL(for: "sample").path])
-    #expect(session.command.environment["RUNTIME_CACHE"] == paths.cacheURL(for: "sample").path)
-    #expect(session.command.environment["OUTRAGE_TARGET_ROOT"] == targetRoot.path)
+    #expect(session.command.arguments[0] == "-x86_64")
+    #expect(URL(fileURLWithPath: session.command.arguments[1]).resolvingSymlinksInPath() == runtimeExecutable.resolvingSymlinksInPath())
+    #expect(session.command.arguments[2] == "--prefix")
+    #expect(URL(fileURLWithPath: session.command.arguments[3]).resolvingSymlinksInPath() == paths.prefixURL(for: "sample").resolvingSymlinksInPath())
+    #expect(URL(fileURLWithPath: session.command.environment["RUNTIME_CACHE"]!).resolvingSymlinksInPath() == paths.cacheURL(for: "sample").resolvingSymlinksInPath())
+    #expect(URL(fileURLWithPath: session.command.environment["OUTRAGE_TARGET_ROOT"]!).resolvingSymlinksInPath() == targetRoot.resolvingSymlinksInPath())
     #expect(fm.fileExists(atPath: paths.prefixURL(for: "sample").path))
     #expect(fm.fileExists(atPath: paths.cacheURL(for: "sample").path))
 }
