@@ -14,6 +14,8 @@ public struct AcquisitionDescriptor: Codable, Equatable, Sendable {
     public var installerArguments: [String]?
     public var managedLauncherExecutable: String?
     public var managedLauncherArguments: [String]?
+    public var targetBootstrapExecutable: String?
+    public var targetBootstrapArguments: [String]?
     public var steamAppID: Int?
     public var steamBranch: String?
 
@@ -25,6 +27,8 @@ public struct AcquisitionDescriptor: Codable, Equatable, Sendable {
         installerArguments: [String]? = nil,
         managedLauncherExecutable: String? = nil,
         managedLauncherArguments: [String]? = nil,
+        targetBootstrapExecutable: String? = nil,
+        targetBootstrapArguments: [String]? = nil,
         steamAppID: Int? = nil,
         steamBranch: String? = nil
     ) {
@@ -35,6 +39,8 @@ public struct AcquisitionDescriptor: Codable, Equatable, Sendable {
         self.installerArguments = installerArguments
         self.managedLauncherExecutable = managedLauncherExecutable
         self.managedLauncherArguments = managedLauncherArguments
+        self.targetBootstrapExecutable = targetBootstrapExecutable
+        self.targetBootstrapArguments = targetBootstrapArguments
         self.steamAppID = steamAppID
         self.steamBranch = steamBranch
     }
@@ -53,6 +59,10 @@ public struct AcquisitionDescriptor: Codable, Equatable, Sendable {
             if let managedLauncherExecutable,
                !Self.isManagedRelativePath(managedLauncherExecutable) {
                 throw AcquisitionError.invalidManagedLauncherExecutable(managedLauncherExecutable)
+            }
+            if let targetBootstrapExecutable,
+               !Self.isManagedRelativePath(targetBootstrapExecutable) {
+                throw AcquisitionError.invalidTargetBootstrapExecutable(targetBootstrapExecutable)
             }
         case .steam:
             guard let steamAppID, steamAppID > 0 else { throw AcquisitionError.steamAppIDRequired }
@@ -131,6 +141,7 @@ public enum AcquisitionError: Error, Equatable, CustomStringConvertible {
     case insecureInstallerURL
     case invalidInstallerSHA256
     case invalidManagedLauncherExecutable(String)
+    case invalidTargetBootstrapExecutable(String)
     case steamAppIDRequired
 
     public var description: String {
@@ -140,6 +151,7 @@ public enum AcquisitionError: Error, Equatable, CustomStringConvertible {
         case .insecureInstallerURL: return "Managed launcher installer URL must use HTTPS"
         case .invalidInstallerSHA256: return "Installer SHA-256 must be 64 hexadecimal characters"
         case .invalidManagedLauncherExecutable(let value): return "Managed launcher executable must use a relative prefix path: \(value)"
+        case .invalidTargetBootstrapExecutable(let value): return "Target bootstrap executable must use a relative target path: \(value)"
         case .steamAppIDRequired: return "Steam acquisition requires a valid app identifier"
         }
     }
