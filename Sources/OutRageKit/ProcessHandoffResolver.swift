@@ -11,7 +11,9 @@ public enum ProcessHandoffResolver {
         guard !normalized.isEmpty else { return nil }
 
         let candidates = snapshots.filter {
-            !baselinePIDs.contains($0.pid) && $0.command.lowercased().contains(normalized)
+            !baselinePIDs.contains($0.pid) &&
+            $0.pid != launcherPID &&
+            $0.command.lowercased().contains(normalized)
         }
         guard !candidates.isEmpty else { return nil }
 
