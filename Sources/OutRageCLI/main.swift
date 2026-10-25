@@ -33,6 +33,18 @@ struct OutRageCLI {
             try paths.ensureDirectories()
             print(paths.baseURL.path)
 
+        case "runtimes":
+            let paths = RuntimePaths()
+            try paths.ensureDirectories()
+            let runtimes = try RuntimeCatalog(runtimesURL: paths.runtimesURL).installed()
+            if runtimes.isEmpty {
+                print("no runtimes installed")
+            } else {
+                for runtime in runtimes {
+                    print("\(runtime.descriptor.id)\t\(runtime.rootURL.path)")
+                }
+            }
+
         case "validate":
             guard arguments.count == 2 else { throw CLIError.usage("validate <profile.json>") }
             let profile = try ProfileLoader.load(from: URL(fileURLWithPath: arguments[1]))
@@ -45,11 +57,51 @@ struct OutRageCLI {
             let plan = try LaunchPlanner.makePlan(profile: profile, targetRoot: paths.targetURL(for: profile.id))
             print(plan)
 
+        case "prepare":
+            guard arguments.count == 2 else { throw CLIError.usage("prepare <profile.json>") }
+            let profile = try ProfileLoader.load(from: URL(fileURLWithPath: arguments[1]))
+            let session = try LaunchSessionBuilder.prepare(profile: profile)
+            print("target: \(session.profile.id)")
+            print("runtime: \(session.runtimeIdentifier ?? "native")")
+            print("cpu: \(session.plan.cpu.rawValue)")
+            print("graphics: \(session.command.graphics.rawValue)")
+            print("command: \(session.command)")
+
+        case "launch":
+            try launch(arguments: Array(arguments.dropFirst()))
+
         case "bundle":
             try bundle(arguments: Array(arguments.dropFirst()))
 
         default:
             throw CLIError.usage("unknown command: \(command)")
+        }
+    }
+
+    static func launch(arguments: [String]) throws {
+        guard let profilePath = arguments.first else {
+            throw CLIError.usage("launch <profile.json> [--wait]")
+        }
+
+        var wait = false
+        for option in arguments.dropFirst() {
+            switch option {
+            case "--wait": wait = true
+            default: throw CLIError.usage("unknown launch option: \(option)")
+            }
+        }
+
+        let profile = try ProfileLoader.load(from: URL(fileURLWithPath: profilePath))
+        let session = try LaunchSessionBuilder.prepare(profile: profile)
+        let running = try ProcessRunner.start(session.command)
+        print("launched: pid \(running.processIdentifier)")
+
+        if wait {
+            running.waitUntilExit()
+            print("exit: \(running.terminationStatus)")
+            if running.terminationStatus != 0 {
+                exit(running.terminationStatus)
+            }
         }
     }
 
@@ -98,8 +150,11 @@ struct OutRageCLI {
 
           doctor                         Inspect host capabilities
           paths                          Create and print runtime data path
+          runtimes                       List installed runtimes
           validate <profile.json>        Validate a target profile
           plan <profile.json>            Resolve a launch plan
+          prepare <profile.json>         Resolve a complete launch session
+          launch <profile.json> [--wait] Launch a configured target
           bundle <profile.json> [...]    Build a native .app wrapper
         """)
     }
