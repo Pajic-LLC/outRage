@@ -9,17 +9,29 @@ public struct HostCapabilities: Equatable, Sendable {
     public let operatingSystemVersion: String
     public let hasMetal: Bool
     public let hasRosetta: Bool
+    public let physicalMemory: UInt64
+    public let metalDeviceName: String?
+    public let metalRecommendedMaxWorkingSetSize: UInt64?
+    public let hasUnifiedMemory: Bool?
 
     public init(
         architecture: String,
         operatingSystemVersion: String,
         hasMetal: Bool,
-        hasRosetta: Bool
+        hasRosetta: Bool,
+        physicalMemory: UInt64 = 0,
+        metalDeviceName: String? = nil,
+        metalRecommendedMaxWorkingSetSize: UInt64? = nil,
+        hasUnifiedMemory: Bool? = nil
     ) {
         self.architecture = architecture
         self.operatingSystemVersion = operatingSystemVersion
         self.hasMetal = hasMetal
         self.hasRosetta = hasRosetta
+        self.physicalMemory = physicalMemory
+        self.metalDeviceName = metalDeviceName
+        self.metalRecommendedMaxWorkingSetSize = metalRecommendedMaxWorkingSetSize
+        self.hasUnifiedMemory = hasUnifiedMemory
     }
 
     public static func current() -> HostCapabilities {
@@ -32,16 +44,27 @@ public struct HostCapabilities: Equatable, Sendable {
         #endif
 
         #if canImport(Metal)
-        let hasMetal = MTLCreateSystemDefaultDevice() != nil
+        let device = MTLCreateSystemDefaultDevice()
+        let hasMetal = device != nil
+        let deviceName = device?.name
+        let workingSet = device?.recommendedMaxWorkingSetSize
+        let unifiedMemory = device?.hasUnifiedMemory
         #else
         let hasMetal = false
+        let deviceName: String? = nil
+        let workingSet: UInt64? = nil
+        let unifiedMemory: Bool? = nil
         #endif
 
         return HostCapabilities(
             architecture: architecture,
             operatingSystemVersion: ProcessInfo.processInfo.operatingSystemVersionString,
             hasMetal: hasMetal,
-            hasRosetta: Self.detectRosetta(architecture: architecture)
+            hasRosetta: Self.detectRosetta(architecture: architecture),
+            physicalMemory: ProcessInfo.processInfo.physicalMemory,
+            metalDeviceName: deviceName,
+            metalRecommendedMaxWorkingSetSize: workingSet,
+            hasUnifiedMemory: unifiedMemory
         )
     }
 
