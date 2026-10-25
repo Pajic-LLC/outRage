@@ -59,3 +59,48 @@ import Testing
     #expect(installed.descriptor.id == "package-test")
     #expect(fm.isExecutableFile(atPath: installed.rootURL.appendingPathComponent("bin/runtime").path))
 }
+
+@Test func runtimePackagerAndInstallerRoundTrip() throws {
+    let fm = FileManager.default
+    let root = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    defer { try? fm.removeItem(at: root) }
+
+    let source = root.appendingPathComponent("roundtrip-runtime", isDirectory: true)
+    let bin = source.appendingPathComponent("bin", isDirectory: true)
+    try fm.createDirectory(at: bin, withIntermediateDirectories: true)
+
+    let descriptor = RuntimeDescriptor(
+        id: "roundtrip-runtime",
+        executable: "bin/runtime",
+        supportedCPUBackends: [.native],
+        supportedGraphicsBackends: [.metal]
+    )
+    try JSONEncoder().encode(descriptor).write(to: source.appendingPathComponent("runtime.json"))
+
+    let executable = bin.appendingPathComponent("runtime")
+    try Data("#!/bin/sh\nexit 0\n".utf8).write(to: executable)
+    try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executable.path)
+
+    let packageDirectory = root.appendingPathComponent("packages", isDirectory: true)
+    let artifacts = try RuntimePackager.build(
+        runtimeRoot: source,
+        version: "1.2.3",
+        outputDirectory: packageDirectory,
+        fileManager: fm
+    )
+
+    #expect(fm.fileExists(atPath: artifacts.archiveURL.path))
+    #expect(fm.fileExists(atPath: artifacts.manifestURL.path))
+    #expect(try FileDigest.verifySHA256(artifacts.manifest.archiveSHA256, of: artifacts.archiveURL))
+
+    let installPaths = RuntimePaths(baseURL: root.appendingPathComponent("installed", isDirectory: true))
+    let installed = try RuntimeInstaller.install(
+        archiveURL: artifacts.archiveURL,
+        manifest: artifacts.manifest,
+        paths: installPaths,
+        fileManager: fm
+    )
+
+    #expect(installed.descriptor == descriptor)
+    #expect(fm.isExecutableFile(atPath: installed.rootURL.appendingPathComponent("bin/runtime").path))
+}
