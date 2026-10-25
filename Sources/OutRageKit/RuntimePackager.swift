@@ -44,7 +44,7 @@ public enum RuntimePackager {
         try process.run()
         process.waitUntilExit()
         guard process.terminationStatus == 0 else {
-            throw RuntimePackageError.extractionFailed(process.terminationStatus)
+            throw RuntimePackageError.packagingFailed(process.terminationStatus)
         }
 
         let manifest = RuntimePackageManifest(
