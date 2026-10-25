@@ -58,10 +58,14 @@ struct OutRageHostApp: App {
 
     @MainActor
     private func launchTarget(_ profile: RuntimeProfile) throws {
-        let session = try LaunchSessionBuilder.prepare(profile: profile)
+        let paths = RuntimePaths()
+        let session = try LaunchSessionBuilder.prepare(profile: profile, paths: paths)
         state = .launching(profile.displayName)
 
-        let running = try ProcessRunner.start(session.command)
+        let running = try ProcessRunner.start(
+            session.command,
+            outputURL: paths.logURL(for: profile.id)
+        )
         runningProcess = running
         state = .running(profile.displayName, running.processIdentifier)
 
@@ -87,19 +91,27 @@ struct OutRageHostApp: App {
 
         switch acquisition.kind {
         case .managedLauncher:
+            let paths = RuntimePaths()
             state = .downloadingSetup(profile.displayName)
-            let installerURL = try await ManagedLauncherBootstrap.prepareInstaller(profile: profile)
+            let installerURL = try await ManagedLauncherBootstrap.prepareInstaller(
+                profile: profile,
+                paths: paths
+            )
             let command = try ManagedLauncherBootstrap.makeInstallerCommand(
                 profile: profile,
-                installerURL: installerURL
+                installerURL: installerURL,
+                paths: paths
             )
 
             state = .runningSetup(profile.displayName)
-            let running = try ProcessRunner.start(command)
+            let running = try ProcessRunner.start(
+                command,
+                outputURL: paths.logURL(for: profile.id)
+            )
             runningProcess = running
             running.process.terminationHandler = { _ in
                 DispatchQueue.main.async {
-                    let targetURL = RuntimePaths().targetURL(for: profile.id)
+                    let targetURL = paths.targetURL(for: profile.id)
                         .appendingPathComponent(profile.executable)
                     if FileManager.default.fileExists(atPath: targetURL.path) {
                         do {
