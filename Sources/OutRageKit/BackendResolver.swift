@@ -42,11 +42,13 @@ public enum BackendResolver {
 
         let preference: [GraphicsBackend]
         if hints.contains(.d3d12) {
-            preference = [.d3dMetal, .metal, .dxmt]
+            preference = [.d3dMetal, .vkd3d]
         } else if hints.contains(.d3d11) || hints.contains(.d3d10) {
-            preference = [.dxmt, .d3dMetal, .metal]
+            preference = [.dxmt, .d3dMetal, .dxvk]
+        } else if hints.contains(.d3d9) {
+            preference = [.dxvk]
         } else {
-            preference = [.dxmt, .d3dMetal, .metal]
+            preference = [.dxmt, .d3dMetal, .dxvk, .vkd3d, .metal]
         }
 
         guard let backend = preference.first(where: runtime.supportedGraphicsBackends.contains) else {
@@ -67,7 +69,7 @@ public enum BackendResolverError: Error, Equatable, CustomStringConvertible {
         case .unsupportedCPU(let backend): return "Runtime does not support CPU backend: \(backend.rawValue)"
         case .unsupportedGraphics(let backend): return "Runtime does not support graphics backend: \(backend.rawValue)"
         case .noCompatibleCPUBackend: return "Runtime has no CPU backend compatible with this host"
-        case .noCompatibleGraphicsBackend: return "Runtime has no compatible graphics backend"
+        case .noCompatibleGraphicsBackend: return "Runtime has no compatible graphics backend for this target"
         }
     }
 }
