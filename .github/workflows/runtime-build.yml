@@ -35,7 +35,7 @@ jobs:
           swift run -c release outrage runtime-install "$ARCHIVE" "$MANIFEST"
       - name: Audit runtime self-containment
         run: |
-          RUNTIME_ROOT="$(swift run -c release outrage runtimes | awk '$1 == "outrage-metal-x86_64" { print $2; exit }')"
+          RUNTIME_ROOT="$(swift run -c release outrage runtimes | awk -F '\t' '$1 == "outrage-metal-x86_64" { print $2; exit }')"
           test -n "$RUNTIME_ROOT"
           bash Tools/runtime/audit-runtime-dylibs.sh "$RUNTIME_ROOT"
       - name: Smoke-test DXMT initialization

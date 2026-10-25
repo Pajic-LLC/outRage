@@ -28,6 +28,7 @@ jobs:
           bash -n Tools/runtime/smoke/verify-installed-runtime.sh
           python3 -m py_compile Tools/runtime/patch-winemac-native-identity.py
           python3 Tools/runtime/test-patch-winemac-native-identity.py
+          python3 Tools/runtime/test-runtime-audit-workflow.py
       - name: Test
         run: swift test
       - name: Build release tools

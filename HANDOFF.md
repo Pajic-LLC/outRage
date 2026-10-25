@@ -20,7 +20,7 @@ A unit test is not the same thing as a product milestone. A subsystem is only **
 
 ### Current primary objective
 
-**Build and prove a launcher-capable, self-contained x86-64 compatibility runtime for Apple Silicon Macs, then use it to complete the first real managed-launcher title end-to-end.**
+**Prove GTA V Legacy Story Mode from legitimate ownership to gameplay through `Grand Theft Auto V.app` on Apple Silicon, using an outRage-managed runtime and DXMT/Metal. The immediate infrastructure gate is a self-contained, launcher-capable x86-64 runtime.**
 
 The current runtime already establishes the core package path. The next runtime must also carry the dependencies needed by modern authenticated launchers, remain portable without Homebrew on the end-user Mac, pass the DXMT/Metal smoke gate, and execute a real x86-64 Win32 program through Rosetta/Wine.
 
@@ -28,7 +28,9 @@ The current runtime already establishes the core package path. The next runtime 
 
 # 1. Mission
 
-outRage exists to make an **owned Windows game behave as much like a normal macOS game as possible on Apple Silicon**.
+outRage makes **Rockstar RAGE-engine games feel like native Apple Silicon Mac games**. This is a Rockstar/RAGE compatibility platform, not a general-purpose Windows launcher or bottle manager.
+
+The owner-supplied [product vision](docs/PRODUCT_VISION.md) defines scope and title priorities: GTA V Legacy Story Mode first, then GTA IV, Max Payne 3, RDR2, GTA V Enhanced, and future compatible RAGE titles. ENRAGE remains separate modding infrastructure. These are planned targets, not proven support.
 
 The intended end state is not “open a Wine GUI, configure a bottle, launch a launcher, then launch a game.” The intended end state is:
 
@@ -124,7 +126,7 @@ The compatibility stack is an implementation detail. **The product experience sh
 
 **Goal:** Game-specific behavior belongs in a versioned profile instead of forks or `if game == ...` branches in the core.
 
-**Why:** outRage only scales if the host/runtime stays generic while title quirks remain declarative.
+**Why:** Versioned title recipes make Rockstar/RAGE fixes reviewable and maintainable. Shared infrastructure should support those recipes; targeted RAGE-specific code is appropriate when a demonstrated compatibility defect cannot be expressed in data.
 
 **Completion means:**
 
@@ -132,7 +134,7 @@ The compatibility stack is an implementation detail. **The product experience sh
 - Invalid paths and incompatible combinations fail validation before execution.
 - Signed profile updates can adjust compatibility policy without rebuilding every `.app`.
 - A title profile is reproducible and reviewable as data.
-- Core changes are reserved for behavior that is genuinely generic.
+- Prefer profiles for title policy; allow targeted Rockstar/RAGE core fixes backed by concrete failures and regression coverage.
 
 **Current status:** 🟢 Schema, validation, signed envelope/store/update plumbing, and effective-profile resolution exist with tests. Production profile distribution/signing policy still needs release work.
 
@@ -258,6 +260,8 @@ The compatibility stack is an implementation detail. **The product experience sh
 outRage is **not** a DRM bypass, crack, credential harvester, or ownership emulator.
 
 The project will not:
+
+- expand into a general-purpose Windows launcher, arbitrary Wine bottle manager, or unrelated storefront frontend;
 
 - bypass a vendor's authentication, license, entitlement, payment, or ownership checks;
 - capture/store launcher passwords for convenience;
@@ -539,7 +543,11 @@ Important `OutRageKit` areas include acquisition, bundle generation/signing, run
 
 ### Live build note
 
-At this snapshot, **Runtime Build #5** (native title identity runtime) and **Runtime Dependencies #1** (pinned x86-64 launcher dependencies) were still in progress. Their status is intentionally recorded as a snapshot only; GitHub Actions is authoritative for their live result.
+Follow-up evidence on 2026-10-25:
+
+- [Runtime Build #5](https://github.com/Pajic-LLC/outRage/actions/runs/40179533510) built and installed its package, then failed before the portability audit could run: whitespace-based `awk` parsing truncated `Library/Application Support` to `Library/Application`. DXMT and Win32 gates were skipped. The workflow now parses the tab-separated runtime listing by tabs; a real Mach-O regression checks both spaced paths and audit failure propagation.
+- [Runtime Dependencies #1](https://github.com/Pajic-LLC/outRage/actions/runs/40179693905) failed at the GnuTLS install-time relink after selecting ARM Homebrew Brotli/Zstd libraries for an x86-64 output. The builder now restricts pkg-config discovery to the pinned prefix and explicitly disables those unbundled optional compression dependencies. A new complete dependency build is still required before calling this proven.
+- Local validation cannot currently prove translated execution: this Mac's x86-64 probe reports `Bad CPU type in executable` (Rosetta is unavailable). Its Command Line Tools also lack the Swift `Testing` module, so the full Swift suite must run on the CI Xcode toolchain. These environment limits do not establish runtime compatibility or gameplay.
 
 ---
 
@@ -668,7 +676,7 @@ Tasks/acceptance:
 
 Goal: prove the entire architecture on one difficult, real, owned Windows title.
 
-The current intended Tier-3 reference scenario is a **Rockstar Launcher / GTA V-class flow** because it exercises authentication, a managed launcher, a title bootstrap, a large install, updates, process handoff, Direct3D rendering, and persistent launcher state. This is a compatibility target, not a promise of unsupported online/anti-cheat functionality.
+The current intended Tier-3 reference scenario is **Rockstar Games Launcher / GTA V Legacy Story Mode** because it exercises authentication, a managed launcher, a title bootstrap, a large install, updates, process handoff, Direct3D rendering, and persistent launcher state. This is a compatibility target, not a promise of unsupported online/anti-cheat functionality.
 
 Reference-title tasks:
 
@@ -999,8 +1007,8 @@ When a long build is running, parallel work is allowed only if it does not inval
 
 This is the queue to follow unless new evidence makes a higher item invalid.
 
-1. **Resolve Runtime Dependencies #1.** If it fails, use the exact build/log error to fix GMP/Nettle/GnuTLS/FreeType construction; do not guess.
-2. **Resolve Runtime Build #5.** Capture whether native identity + package audit + DXMT/PE smoke succeed on the package it produces.
+1. **Prove the dependency isolation fix in a fresh Runtime Dependencies run.** The original failure was ARM Homebrew Brotli/Zstd contamination during GnuTLS installation; inspect the new run before claiming the x86-64 prefix works.
+2. **Prove the spaced-path audit fix in a fresh Runtime Build run.** Build #5 stopped before auditing; capture the actual portability, DXMT, and Win32 results now that the complete runtime path reaches the auditor.
 3. **Integrate the pinned x86-64 dependency prefix into the real engine/runtime build.** The launcher-ready runtime cannot remain configured without GnuTLS/FreeType.
 4. **Bundle/relocate/re-sign the dependency dylibs into the runtime package.**
 5. **Run the complete M2 gate on the dependency-integrated package:** install its own ZIP, portability audit, DXMT smoke, Win32 PE smoke.

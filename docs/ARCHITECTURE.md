@@ -4,13 +4,13 @@ This document explains the current code-facing architecture. For product goals, 
 
 ## Design principle
 
-outRage should make a supported Windows title behave like a normal macOS application while keeping the compatibility implementation generic and testable.
+outRage makes Rockstar RAGE-engine games feel like native Apple Silicon Mac games. GTA V Legacy Story Mode is the first target; see [the product vision](PRODUCT_VISION.md). Shared infrastructure stays reusable and testable, but product scope is Rockstar/RAGE.
 
 The core rule is:
 
 > **Title-specific behavior belongs in a profile whenever possible; runtime preparation and lifecycle behavior belong in shared code.**
 
-The host must not grow into a collection of game-name conditionals.
+Prefer declarative title recipes where they express the real behavior. Targeted Rockstar/RAGE compatibility code is appropriate when evidence shows a profile alone cannot solve the issue; do not let a generic abstraction obstruct the supported title path.
 
 ## Products
 

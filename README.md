@@ -1,6 +1,6 @@
 # outRage
 
-outRage is a **pre-alpha macOS compatibility runtime and orchestration layer** for making legitimately owned Windows games behave like native-feeling Apple Silicon `.app` bundles.
+outRage makes **Rockstar RAGE-engine games feel like native Apple Silicon Mac games**. It is a pre-alpha macOS compatibility platform dedicated to Rockstar/RAGE titles, with **GTA V Legacy Story Mode** as the first flagship target.
 
 The project combines a native Swift host, data-driven per-title profiles, isolated prefixes and managed game storage, a packaged x86-64 compatibility runtime, Metal-oriented graphics translation, verified runtime/profile updates, and managed-launcher process handoff.
 
@@ -12,10 +12,13 @@ The end-state experience is simple: double-click a title `.app` and let outRage 
 
 The user should not need Homebrew, Xcode, a terminal, a prefix editor, or manual DLL configuration.
 
+The intended title progression is GTA V Legacy → GTA IV → Max Payne 3 → Red Dead Redemption 2 → GTA V Enhanced → future compatible RAGE titles. These are targets, not claims of proven support. Story Mode is the initial priority; ENRAGE remains a separate modding project.
+
 Authentication, ownership, entitlement, launcher updates, and DRM remain with the game/vendor. **outRage is not a DRM bypass.**
 
 ## Start here
 
+- **[Product vision](docs/PRODUCT_VISION.md)** — Rockstar/RAGE scope, title progression, and the Install → Play experience.
 - **[Engineering handoff / living completion plan](HANDOFF.md)** — authoritative mission, current status, milestones, acceptance criteria, risks, and ordered next work.
 - **[Architecture](docs/ARCHITECTURE.md)** — code-facing subsystem and launch-flow overview.
 
