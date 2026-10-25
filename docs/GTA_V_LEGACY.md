@@ -26,6 +26,10 @@ Sources: [Rockstar's BattlEye FAQ](https://support.rockstargames.com/articles/1n
 
 Install the exact `26.3.0+v0.80-launcher.1` package that passes the dependency-integrated build, portability audit, DXMT module-load, D3D11 device-creation, and Windows-execution gates. The reference profile currently selects by runtime ID; it does not enforce package-version ranges. Do not use a previously installed stripped foundation runtime for this test. No release runtime download is configured in this developer profile.
 
+That package passed all gates in [runtime run 40187466116](https://github.com/Pajic-LLC/outRage/actions/runs/40187466116) at `659a9fa`. Its ZIP SHA-256 is `768d08841981dbcb793a355e37ef027172928a205ea526d798be3263053b744b`. The same downloaded ZIP installed and passed the 37-file Mach-O audit, builtin DXMT check, and hardware D3D11 feature-level-11.0 probe on the physical M2 Pro (16 GiB, macOS 27.0.1). The canonical probe was compiled independently in [probe run 40188001903](https://github.com/Pajic-LLC/outRage/actions/runs/40188001903); the local run used an environment cleared of inherited Wine/DYLD overrides and Homebrew PATH.
+
+Fresh prefix initialization logged a missing `syswow64/rundll32.exe` warning. The x86-64 graphics probe still passed; 32-bit compatibility is not established. The native development app started the official installer, whose log reports version `1.0.109.3031` and reaches its language page. Installation, login, and gameplay are not yet proven.
+
 Developer checks:
 
 ```sh
