@@ -20,7 +20,7 @@ A unit test is not the same thing as a product milestone. A subsystem is only **
 
 ### Current primary objective
 
-**Prove GTA V Legacy Story Mode from legitimate ownership to gameplay through `Grand Theft Auto V.app` on Apple Silicon, using an outRage-managed runtime and DXMT/Metal. The immediate gate is the official Rockstar installer and authenticated launcher on the local M2 Pro.**
+**Prove GTA V Legacy Story Mode from legitimate ownership to gameplay through `Grand Theft Auto V.app` on Apple Silicon, using an outRage-managed runtime and DXMT/Metal. The immediate blocker is visible Social Club authentication: vendor installation/update completes, but its browser window is blank or absent.**
 
 The dependency-integrated runtime passed its complete CI package gate and local M2 Pro portability/DXMT/D3D11 checks. This establishes the runtime substrate, not Rockstar launcher compatibility or gameplay. See the exact artifact evidence below.
 
@@ -545,6 +545,8 @@ Important `OutRageKit` areas include acquisition, bundle generation/signing, run
 
 Follow-up evidence on 2026-10-25:
 
+- **Live launcher blockers:** owner completed the official installer. A native host sample exposed process-list pipe deadlock during installer-to-launcher handoff; fixed by draining output before wait, with a large-output regression. All 80 Swift tests pass in CI. Stock DXMT v0.80 aborts on SwapDeviceContextState; the new targeted probe confirms exit 3 on stock and exit 0 on exact upstream a148782. Experimental runtime passes audit/module/device/context probes. Vendor updates and Social Club 2.4.0.240 installation succeed, but visible authentication remains blank/absent. See docs/GTA_V_LEGACY.md for the ongoing isolated renderer experiment and exact upstream provenance.
+
 - **Complete integrated runtime proof:** [run 40187466116](https://github.com/Pajic-LLC/outRage/actions/runs/40187466116) at `659a9fa` passed engine build, package installation, 37-file portability audit, builtin DXMT initialization, hardware D3D11 device creation (`0xb000` / 11.0), and Win32 PE execution before uploading its artifact. Version `26.3.0+v0.80-launcher.1`; ZIP SHA-256 `768d08841981dbcb793a355e37ef027172928a205ea526d798be3263053b744b`.
 - **Physical M2 Pro proof:** downloaded that ZIP, matched the manifest checksum, installed through outRage, passed the same 37-file audit and builtin module check, and ran the independently CI-compiled canonical D3D11 probe under a cleared environment (no inherited Wine/DYLD overrides or Homebrew PATH). Hardware feature level 11.0 passed on macOS 27.0.1, M2 Pro, 16 GiB. Fresh prefix initialization warned that syswow64/rundll32 was unavailable; this did not stop the x86-64 probe and is not evidence of working 32-bit execution. Rockstar installer/login/gameplay are separate proof gates.
 - **Signing boundary:** strict signature verification passes for the 36 relocated engine/dependency Mach-O files. The unmodified upstream DXMT `winemetal.so` is unsigned. It loads in this developer runtime; complete runtime release signing remains unfinished and must not be inferred from the ad-hoc app/engine checks.
@@ -1015,12 +1017,13 @@ When a long build is running, parallel work is allowed only if it does not inval
 
 This is the queue to follow unless new evidence makes a higher item invalid.
 
-1. **Continue the official Rockstar installer on the local M2 Pro.** The generated `Grand Theft Auto V.app` has started the hash-pinned official installer. Record the first actionable vendor UI or actual failure; user consent and credentials stay in the vendor flow.
-2. **Prove launcher install, login, and updates.** Do not infer authentication capability from graphics/dependency probes. Observe the missing syswow64/rundll32 initialization warning if a live flow needs 32-bit execution.
-3. **Install legitimately owned GTA V Legacy into mapped storage.** The owner confirmed Rockstar ownership. Confirm sufficient free storage before downloading; the game files are not yet present.
-4. **Prove a legitimate title bootstrap if available, otherwise launcher fallback.** No undocumented product switches or unverified bootstrap are configured in the experimental recipe.
-5. **Prove handoff to `GTA5.exe`, Metal gameplay, input/audio/saves, clean quit, repeat launch, reboot launch, and updates.** Record exact builds and failures at their actual layer.
-6. **Complete native UX, recovery/diagnostics, performance/stability, release signing/notarization/license audit, and M9 fresh-machine acceptance.**
+1. **Resolve Social Club browser rendering/presentation.** The owner completed Rockstar Launcher installation. With the upstream DXMT context-state fix, the vendor updater installs Social Club 2.4.0.240 and its log reaches PAGE_READY / START_SIGN_IN / FINISHED, but the owner sees a blank or absent window. A diagnostic logs unsupported cross-process swapchain creation. An original-Wine D3D11/DXGI helper-only fallback built successfully in [run 40203374791](https://github.com/Pajic-LLC/outRage/actions/runs/40203374791); its isolated native-load probe passes (feature level 10.1), and the live helper-only experiment awaits visible UI confirmation before adoption.
+2. **Promote a reproducible fixed backend.** Stock DXMT v0.80 aborts on SwapDeviceContextState. Exact upstream CI build a148782 fixes the targeted regression but does not yet produce usable authentication UI. It is a separate experimental runtime, not the normal recipe. See docs/GTA_V_LEGACY.md for source/run/hash and reproducer. CI artifact expiry precludes treating it as a durable release source.
+3. **Prove launcher login and repeat updates in visible vendor UI.** Do not infer authentication from internal browser state. Temporary helper D3D11-disable registry value was removed; the Wine desktop diagnostic was stopped.
+4. **Install legitimately owned GTA V Legacy into mapped storage.** The owner confirmed Rockstar ownership. Confirm sufficient free storage before downloading; the game files are not yet present.
+5. **Prove legitimate bootstrap/handoff, Metal gameplay, input/audio/saves, clean quit, repeat launch, reboot launch, and updates.** No unverified title bootstrap or product switches are configured.
+6. **Complete native branding and UX.** Process-discovery pipe deadlock is fixed, with a 20,000-row regression and 80-test CI proof. Optional managedLauncherDisplayName prevents using the game title for vendor setup commands; residual Wine Dock/window branding and the host's handling of updater-spawned launcher processes still need proof.
+7. **Complete recovery/diagnostics, performance/stability, release signing/notarization/license audit, and M9 fresh-machine acceptance.**
 
 The complete runtime gate already passed at `659a9fa` ([run 40187466116](https://github.com/Pajic-LLC/outRage/actions/runs/40187466116)). Reuse that artifact unless relevant runtime inputs change; documentation and independent probe-workflow changes do not require rebuilding the engine.
 

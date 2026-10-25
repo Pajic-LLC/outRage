@@ -2,9 +2,6 @@ name: Launcher Graphics Fallback Probe
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - .github/workflows/runtime-launcher-fallback.yml
 
 permissions:
   contents: read
