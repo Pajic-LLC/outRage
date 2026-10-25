@@ -69,3 +69,51 @@ import Testing
     #expect(fm.fileExists(atPath: app.appendingPathComponent("Contents/MacOS/outRageHost").path))
     #expect(fm.fileExists(atPath: app.appendingPathComponent("Contents/Resources/profile.json").path))
 }
+
+@Test func launchCommandUsesRosettaAndRuntimePreferences() throws {
+    let profile = RuntimeProfile(
+        id: "command-test",
+        displayName: "Command Test",
+        bundleIdentifier: "com.pajic.command-test",
+        executable: "game/target.exe",
+        cpu: .auto,
+        graphics: .auto,
+        arguments: ["--launch"]
+    )
+    let host = HostCapabilities(
+        architecture: "arm64",
+        operatingSystemVersion: "test",
+        hasMetal: true,
+        hasRosetta: true
+    )
+    let plan = try LaunchPlanner.makePlan(
+        profile: profile,
+        targetRoot: URL(fileURLWithPath: "/tmp/target"),
+        host: host
+    )
+    let runtime = RuntimeDescriptor(
+        id: "runtime-a",
+        executable: "bin/runtime",
+        argumentPrefix: ["--managed"],
+        supportedCPUBackends: [.rosetta],
+        supportedGraphicsBackends: [.dxmt, .d3dMetal]
+    )
+
+    let command = try LaunchCommandBuilder.make(
+        plan: plan,
+        runtime: runtime,
+        runtimeRoot: URL(fileURLWithPath: "/tmp/runtime")
+    )
+
+    #expect(command.executableURL.path == "/usr/bin/arch")
+    #expect(command.arguments == [
+        "-x86_64",
+        "/tmp/runtime/bin/runtime",
+        "--managed",
+        "/tmp/target/game/target.exe",
+        "--launch"
+    ])
+    #expect(command.graphics == .dxmt)
+    #expect(command.environment["OUTRAGE_CPU_BACKEND"] == "rosetta")
+    #expect(command.environment["OUTRAGE_GRAPHICS_BACKEND"] == "dxmt")
+}
