@@ -28,6 +28,7 @@ public enum LaunchSessionBuilder {
     ) throws -> LaunchSession {
         try profile.validate()
         try paths.ensureDirectories(fileManager: fileManager)
+        try paths.ensureTargetDirectories(for: profile.id, fileManager: fileManager)
 
         let targetRoot = paths.targetURL(for: profile.id)
         let plan = try LaunchPlanner.makePlan(
@@ -61,10 +62,18 @@ public enum LaunchSessionBuilder {
             throw LaunchSessionError.runtimeExecutableMissing(runtimeExecutable.path)
         }
 
+        let context = RuntimeLaunchContext(
+            runtimeRoot: installed.rootURL,
+            targetRoot: targetRoot,
+            prefixRoot: paths.prefixURL(for: profile.id),
+            cacheRoot: paths.cacheURL(for: profile.id)
+        )
+
         let command = try LaunchCommandBuilder.make(
             plan: plan,
             runtime: installed.descriptor,
-            runtimeRoot: installed.rootURL
+            runtimeRoot: installed.rootURL,
+            context: context
         )
 
         return LaunchSession(
