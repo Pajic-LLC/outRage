@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v7
       - name: Install build tools
         run: brew install bison flex mingw-w64 pkgconf
-      - name: Build original Wine D3D11 and DXGI for isolated launcher testing
+      - name: Build matching Wine Direct3D modules for isolated launcher testing
         run: |
           mkdir -p "$RUNNER_TEMP/wine-fallback/source" "$RUNNER_TEMP/wine-fallback/build" "$RUNNER_TEMP/wine-fallback/modules"
           cd "$RUNNER_TEMP/wine-fallback"
@@ -33,9 +33,10 @@ jobs:
             --enable-archs=x86_64 --disable-tests --without-x --without-vulkan \
             --without-gstreamer --without-gnutls --without-freetype --without-sdl \
             > ../configure.log 2>&1
-          arch -x86_64 make -j3 dlls/d3d11/all dlls/dxgi/all > ../make.log 2>&1
-          cp dlls/d3d11/x86_64-windows/d3d11.dll ../modules/
-          cp dlls/dxgi/x86_64-windows/dxgi.dll ../modules/
+          arch -x86_64 make -j3 dlls/d3d10/all dlls/d3d10_1/all dlls/d3d10core/all dlls/d3d11/all dlls/dxgi/all > ../make.log 2>&1
+          for module in d3d10 d3d10_1 d3d10core d3d11 dxgi; do
+            cp "dlls/$module/x86_64-windows/$module.dll" ../modules/
+          done
           cd ../modules
           file d3d11.dll dxgi.dll
           file d3d11.dll | grep -q 'PE32+.*x86-64'
