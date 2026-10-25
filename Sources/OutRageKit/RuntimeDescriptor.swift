@@ -30,13 +30,39 @@ public struct RuntimeFileMapping: Codable, Equatable, Sendable {
     }
 
     public func validate() throws {
-        guard !source.isEmpty, !source.hasPrefix("/"), !source.split(separator: "/").contains("..") else {
+        guard Self.isManagedRelativePath(source) else {
             throw RuntimeDescriptorError.invalidFileMapping(source)
         }
-        guard !destination.isEmpty,
-              !destination.hasPrefix("/"),
-              !destination.split(separator: "/").contains("..") else {
+        guard Self.isManagedRelativePath(destination) else {
             throw RuntimeDescriptorError.invalidFileMapping(destination)
+        }
+    }
+
+    private static func isManagedRelativePath(_ value: String) -> Bool {
+        !value.isEmpty && !value.hasPrefix("/") && !value.split(separator: "/").contains("..")
+    }
+}
+
+public struct RuntimeCommandDescriptor: Codable, Equatable, Sendable {
+    public var executable: String
+    public var arguments: [String]
+    public var environment: [String: String]
+
+    public init(
+        executable: String,
+        arguments: [String] = [],
+        environment: [String: String] = [:]
+    ) {
+        self.executable = executable
+        self.arguments = arguments
+        self.environment = environment
+    }
+
+    public func validate() throws {
+        guard !executable.isEmpty,
+              !executable.hasPrefix("/"),
+              !executable.split(separator: "/").contains("..") else {
+            throw RuntimeDescriptorError.invalidRuntimeCommand(executable)
         }
     }
 }
@@ -64,9 +90,11 @@ public struct RuntimeBackendConfiguration: Codable, Equatable, Sendable {
 public struct RuntimeDescriptor: Codable, Equatable, Sendable {
     public var schemaVersion: Int
     public var id: String
+    public var revision: Int?
     public var executable: String
     public var argumentPrefix: [String]
     public var environment: [String: String]
+    public var prefixInitializer: RuntimeCommandDescriptor?
     public var supportedCPUBackends: [CPUBackend]
     public var supportedGraphicsBackends: [GraphicsBackend]
     public var cpuConfigurations: [String: RuntimeBackendConfiguration]?
@@ -75,9 +103,11 @@ public struct RuntimeDescriptor: Codable, Equatable, Sendable {
     public init(
         schemaVersion: Int = 1,
         id: String,
+        revision: Int? = 1,
         executable: String,
         argumentPrefix: [String] = [],
         environment: [String: String] = [:],
+        prefixInitializer: RuntimeCommandDescriptor? = nil,
         supportedCPUBackends: [CPUBackend] = [.native, .rosetta, .fex],
         supportedGraphicsBackends: [GraphicsBackend] = [.metal, .dxmt, .d3dMetal],
         cpuConfigurations: [String: RuntimeBackendConfiguration]? = nil,
@@ -85,9 +115,11 @@ public struct RuntimeDescriptor: Codable, Equatable, Sendable {
     ) {
         self.schemaVersion = schemaVersion
         self.id = id
+        self.revision = revision
         self.executable = executable
         self.argumentPrefix = argumentPrefix
         self.environment = environment
+        self.prefixInitializer = prefixInitializer
         self.supportedCPUBackends = supportedCPUBackends
         self.supportedGraphicsBackends = supportedGraphicsBackends
         self.cpuConfigurations = cpuConfigurations
@@ -104,6 +136,10 @@ public struct RuntimeDescriptor: Codable, Equatable, Sendable {
         guard !executable.isEmpty, !executable.hasPrefix("/"), !executable.split(separator: "/").contains("..") else {
             throw RuntimeDescriptorError.executableMustBeRelative(executable)
         }
+        if let revision, revision < 1 {
+            throw RuntimeDescriptorError.invalidRevision(revision)
+        }
+        try prefixInitializer?.validate()
         guard !supportedCPUBackends.isEmpty else {
             throw RuntimeDescriptorError.noCPUBackends
         }
@@ -141,7 +177,9 @@ public struct RuntimeDescriptor: Codable, Equatable, Sendable {
 public enum RuntimeDescriptorError: Error, Equatable, CustomStringConvertible {
     case unsupportedSchema(Int)
     case emptyID
+    case invalidRevision(Int)
     case executableMustBeRelative(String)
+    case invalidRuntimeCommand(String)
     case noCPUBackends
     case noGraphicsBackends
     case invalidCPUConfiguration(String)
@@ -152,7 +190,9 @@ public enum RuntimeDescriptorError: Error, Equatable, CustomStringConvertible {
         switch self {
         case .unsupportedSchema(let value): return "Unsupported runtime schema: \(value)"
         case .emptyID: return "Runtime id cannot be empty"
+        case .invalidRevision(let value): return "Runtime revision must be positive: \(value)"
         case .executableMustBeRelative(let value): return "Runtime executable must be relative: \(value)"
+        case .invalidRuntimeCommand(let value): return "Runtime command must use a managed relative executable: \(value)"
         case .noCPUBackends: return "Runtime must declare at least one CPU backend"
         case .noGraphicsBackends: return "Runtime must declare at least one graphics backend"
         case .invalidCPUConfiguration(let value): return "Invalid CPU backend configuration: \(value)"
