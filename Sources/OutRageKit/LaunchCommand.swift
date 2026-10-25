@@ -24,14 +24,15 @@ public enum LaunchCommandBuilder {
     public static func make(
         plan: LaunchPlan,
         runtime: RuntimeDescriptor? = nil,
-        runtimeRoot: URL? = nil
+        runtimeRoot: URL? = nil,
+        context: RuntimeLaunchContext? = nil
     ) throws -> LaunchCommand {
         if plan.runtime == .native {
             return LaunchCommand(
                 executableURL: plan.executableURL,
-                arguments: plan.arguments,
+                arguments: context?.expanding(plan.arguments) ?? plan.arguments,
                 workingDirectoryURL: plan.workingDirectoryURL,
-                environment: plan.environment,
+                environment: context?.expanding(plan.environment) ?? plan.environment,
                 graphics: plan.graphics
             )
         }
@@ -47,12 +48,22 @@ public enum LaunchCommandBuilder {
 
         let graphics = try resolveGraphics(plan.graphics, runtime: runtime)
         let runtimeExecutable = runtimeRoot.appendingPathComponent(runtime.executable)
-        let runtimeArguments = runtime.argumentPrefix + [plan.executableURL.path] + plan.arguments
+        let runtimePrefix = context?.expanding(runtime.argumentPrefix) ?? runtime.argumentPrefix
+        let planArguments = context?.expanding(plan.arguments) ?? plan.arguments
+        let runtimeArguments = runtimePrefix + [plan.executableURL.path] + planArguments
 
-        var environment = runtime.environment
-        plan.environment.forEach { environment[$0.key] = $0.value }
+        var environment = context?.expanding(runtime.environment) ?? runtime.environment
+        let planEnvironment = context?.expanding(plan.environment) ?? plan.environment
+        planEnvironment.forEach { environment[$0.key] = $0.value }
         environment["OUTRAGE_GRAPHICS_BACKEND"] = graphics.rawValue
         environment["OUTRAGE_CPU_BACKEND"] = plan.cpu.rawValue
+
+        if let context {
+            environment["OUTRAGE_RUNTIME_ROOT"] = context.runtimeRoot.path
+            environment["OUTRAGE_TARGET_ROOT"] = context.targetRoot.path
+            environment["OUTRAGE_PREFIX_ROOT"] = context.prefixRoot.path
+            environment["OUTRAGE_CACHE_ROOT"] = context.cacheRoot.path
+        }
 
         if plan.cpu == .rosetta {
             return LaunchCommand(
