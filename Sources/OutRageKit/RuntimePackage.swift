@@ -42,12 +42,30 @@ public struct RuntimePackageManifest: Codable, Equatable, Sendable {
     }
 }
 
+public struct RuntimePackageSource: Codable, Equatable, Sendable {
+    public var archiveURL: URL
+    public var manifest: RuntimePackageManifest
+
+    public init(archiveURL: URL, manifest: RuntimePackageManifest) {
+        self.archiveURL = archiveURL
+        self.manifest = manifest
+    }
+
+    public func validate() throws {
+        guard archiveURL.scheme == "https" || archiveURL.isFileURL else {
+            throw RuntimePackageError.insecureArchiveURL
+        }
+        try manifest.validate()
+    }
+}
+
 public enum RuntimePackageError: Error, Equatable, CustomStringConvertible {
     case unsupportedSchema(Int)
     case invalidRuntimeIdentifier(String)
     case invalidVersion
     case invalidSHA256
     case invalidRootSubdirectory(String)
+    case insecureArchiveURL
     case checksumMismatch
     case packagingFailed(Int32)
     case extractionFailed(Int32)
@@ -61,6 +79,7 @@ public enum RuntimePackageError: Error, Equatable, CustomStringConvertible {
         case .invalidVersion: return "Runtime package version cannot be empty"
         case .invalidSHA256: return "Runtime package SHA-256 must be 64 hexadecimal characters"
         case .invalidRootSubdirectory(let value): return "Invalid runtime package root: \(value)"
+        case .insecureArchiveURL: return "Runtime package URL must use HTTPS"
         case .checksumMismatch: return "Runtime package checksum does not match"
         case .packagingFailed(let status): return "Runtime package creation failed with status \(status)"
         case .extractionFailed(let status): return "Runtime package extraction failed with status \(status)"
