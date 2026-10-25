@@ -1,0 +1,39 @@
+name: Runtime Dependencies
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feat/runtime-foundation]
+    paths:
+      - Tools/runtime/build-x86_64-runtime-deps.sh
+      - .github/workflows/runtime-deps.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: runtime-deps-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build pinned x86_64 runtime dependencies
+        run: |
+          bash Tools/runtime/build-x86_64-runtime-deps.sh \
+            --work "$RUNNER_TEMP/outrage-deps" \
+            --prefix "$RUNNER_TEMP/outrage-deps/prefix"
+      - name: Verify dependency architecture
+        run: |
+          PREFIX="$RUNNER_TEMP/outrage-deps/prefix"
+          test -f "$PREFIX/outrage-deps.lock"
+          cat "$PREFIX/outrage-deps.lock"
+          for name in libgmp libnettle libhogweed libfreetype libgnutls; do
+            DYLIB="$(find "$PREFIX/lib" -maxdepth 1 -type f -name "$name*.dylib" -print -quit)"
+            test -n "$DYLIB"
+            file "$DYLIB" | grep -q x86_64
+            otool -L "$DYLIB"
+          done
