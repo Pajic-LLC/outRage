@@ -12,6 +12,7 @@ public struct RuntimePaths: Sendable {
     public var targetsURL: URL { baseURL.appendingPathComponent("Targets", isDirectory: true) }
     public var prefixesURL: URL { baseURL.appendingPathComponent("Prefixes", isDirectory: true) }
     public var cacheURL: URL { baseURL.appendingPathComponent("Cache", isDirectory: true) }
+    public var runtimePackageCacheURL: URL { cacheURL.appendingPathComponent("RuntimePackages", isDirectory: true) }
     public var logsURL: URL { baseURL.appendingPathComponent("Logs", isDirectory: true) }
 
     public func targetURL(for profileID: String) -> URL {
@@ -26,12 +27,26 @@ public struct RuntimePaths: Sendable {
         cacheURL.appendingPathComponent(profileID, isDirectory: true)
     }
 
+    public func runtimePackageArchiveURL(identifier: String, version: String) -> URL {
+        let safeVersion = version.replacingOccurrences(of: "/", with: "-")
+        return runtimePackageCacheURL.appendingPathComponent("\(identifier)-\(safeVersion).zip")
+    }
+
     public func logURL(for profileID: String) -> URL {
         logsURL.appendingPathComponent(profileID + ".log")
     }
 
     public func ensureDirectories(fileManager: FileManager = .default) throws {
-        for url in [baseURL, runtimesURL, profilesURL, targetsURL, prefixesURL, cacheURL, logsURL] {
+        for url in [
+            baseURL,
+            runtimesURL,
+            profilesURL,
+            targetsURL,
+            prefixesURL,
+            cacheURL,
+            runtimePackageCacheURL,
+            logsURL
+        ] {
             try fileManager.createDirectory(at: url, withIntermediateDirectories: true)
         }
     }
