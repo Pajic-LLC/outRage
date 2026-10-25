@@ -174,3 +174,15 @@ import Testing
         hints: [.d3d12, .dxgi]
     ) == .d3dMetal)
 }
+
+@Test func d3d12AutoResolutionUsesMullionButRejectsD3D11OnlyRuntime() throws {
+    let runtime = RuntimeDescriptor(id: "mullion", executable: "bin/wine",
+        supportedCPUBackends: [.rosetta], supportedGraphicsBackends: [.dxmt, .mullion])
+    #expect(try BackendResolver.resolveGraphics(requested: .auto, runtime: runtime,
+        hints: [.d3d12]) == .mullion)
+    let legacy = RuntimeDescriptor(id: "legacy", executable: "bin/wine",
+        supportedCPUBackends: [.rosetta], supportedGraphicsBackends: [.dxmt])
+    #expect(throws: BackendResolverError.noCompatibleGraphicsBackend) {
+        try BackendResolver.resolveGraphics(requested: .auto, runtime: legacy, hints: [.d3d12])
+    }
+}

@@ -95,3 +95,11 @@ private func testCache() -> RuntimeCacheLocation {
         try PerformancePolicy(metalFXSpatialUpscaleFactor: 2.1).validate()
     }
 }
+
+@Test func mullionUsesBuildCacheWithoutD3D11PerformanceDirectives() {
+    let tuned = PerformanceLaunchTuner.tune(testCommand(graphics: .mullion), cache: testCache(),
+        policy: PerformancePolicy(preferredMaxFrameRate: 60, metalFXSpatialUpscaling: true))
+    #expect(tuned.environment["DXMT_SHADER_CACHE_PATH"] == "/tmp/cache/build/Shaders")
+    #expect(tuned.environment["DXMT_CONFIG"] == nil)
+    #expect(tuned.environment["DXMT_METALFX_SPATIAL_SWAPCHAIN"] == nil)
+}

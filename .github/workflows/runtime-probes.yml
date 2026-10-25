@@ -14,6 +14,7 @@ on:
       - Tools/runtime/smoke/d2d-window.cpp
       - Tools/runtime/smoke/cef-process-probe.c
       - Tools/runtime/smoke/winemac-window-observer.m
+      - Tools/runtime/smoke/d3d12-copy.c
 
 permissions:
   contents: read
@@ -44,6 +45,10 @@ jobs:
             -o "$RUNNER_TEMP/runtime-probes/d3d11-smoke.exe" \
             -ld3d11 -ldxgi -ldxguid -lole32 -luuid
           file "$RUNNER_TEMP/runtime-probes/d3d11-smoke.exe" | grep -q 'PE32+.*x86-64'
+          cp Tools/runtime/smoke/d3d12-copy.c "$RUNNER_TEMP/runtime-probes/"
+          x86_64-w64-mingw32-gcc -O2 -Wall -Wextra -Werror \
+            Tools/runtime/smoke/d3d12-copy.c -o "$RUNNER_TEMP/runtime-probes/d3d12-copy.exe" \
+            -ld3d12 -ldxgi -ldxguid -luuid
           cp Tools/runtime/smoke/d3d11-context-state.c "$RUNNER_TEMP/runtime-probes/"
           x86_64-w64-mingw32-gcc -O2 -s \
             "$RUNNER_TEMP/runtime-probes/d3d11-context-state.c" \

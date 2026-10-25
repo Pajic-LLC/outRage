@@ -21,6 +21,10 @@ public enum PerformanceLaunchTuner {
             )
         case .auto, .metal, .d3dMetal, .dxvk, .vkd3d:
             break
+        case .mullion:
+            // Mullion accepts the DXMT shader-cache alias. Do not apply the
+            // D3D11-specific DXMT performance policy to a D3D12 title.
+            environment["DXMT_SHADER_CACHE_PATH"] = cache.shaderURL.path
         }
 
         return LaunchCommand(

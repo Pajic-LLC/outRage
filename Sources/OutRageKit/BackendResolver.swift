@@ -42,13 +42,13 @@ public enum BackendResolver {
 
         let preference: [GraphicsBackend]
         if hints.contains(.d3d12) {
-            preference = [.d3dMetal, .vkd3d]
+            preference = [.d3dMetal, .mullion, .vkd3d]
         } else if hints.contains(.d3d11) || hints.contains(.d3d10) {
-            preference = [.dxmt, .d3dMetal, .dxvk]
+            preference = [.dxmt, .d3dMetal, .mullion, .dxvk]
         } else if hints.contains(.d3d9) {
             preference = [.dxvk]
         } else {
-            preference = [.dxmt, .d3dMetal, .dxvk, .vkd3d, .metal]
+            preference = [.dxmt, .d3dMetal, .mullion, .dxvk, .vkd3d, .metal]
         }
 
         guard let backend = preference.first(where: runtime.supportedGraphicsBackends.contains) else {

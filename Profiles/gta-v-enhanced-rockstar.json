@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "gta-v-enhanced-rockstar",
+  "displayName": "Grand Theft Auto V Enhanced",
+  "bundleIdentifier": "com.pajic.outrage.gta-v-enhanced",
+  "executable": "GTA5_Enhanced.exe",
+  "executableScope": "target",
+  "workingDirectory": ".",
+  "runtime": "compatibility",
+  "runtimeIdentifier": "outrage-metal-mullion-test",
+  "launcher": "managed",
+  "cpu": "rosetta",
+  "graphics": "mullion",
+  "arguments": [],
+  "environment": {},
+  "processMatch": "GTA5_Enhanced.exe",
+  "pathMappings": [
+    {
+      "sourceScope": "target",
+      "source": ".",
+      "destinationScope": "prefix",
+      "destination": "drive_c/Program Files/Rockstar Games/Grand Theft Auto V Enhanced"
+    }
+  ],
+  "acquisition": {
+    "kind": "managedLauncher",
+    "installerURL": "https://gamedownloads.rockstargames.com/public/installer/Rockstar-Games-Launcher.exe",
+    "installerSHA256": "321886457b7e4ab727a27671c17a815684a3943579eedf7e2248a3b9f0973746",
+    "installerArguments": [],
+    "managedLauncherExecutable": "drive_c/Program Files/Rockstar Games/Launcher/Launcher.exe",
+    "managedLauncherDisplayName": "Rockstar Games Launcher",
+    "managedLauncherArguments": []
+  }
+}
