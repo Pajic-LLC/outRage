@@ -36,4 +36,8 @@ jobs:
       - name: Validate GTA V Legacy reference profile
         run: swift run outrage validate Profiles/gta-v-legacy-rockstar.json
       - name: Build release tools
-        run: swift build -c release --product outrage --product outrage-host
+        run: |
+          swift build -c release --product outrage
+          swift build -c release --product outrage-host
+      - name: Report runtime proof host capabilities
+        run: .build/release/outrage doctor

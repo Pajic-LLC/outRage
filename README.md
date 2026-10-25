@@ -53,7 +53,8 @@ Requires macOS 14+ and Swift 6 for development.
 
 ```bash
 swift test
-swift build -c release --product outrage --product outrage-host
+swift build -c release --product outrage
+swift build -c release --product outrage-host
 swift run outrage doctor
 swift run outrage validate Profiles/bootstrap.json
 ```
