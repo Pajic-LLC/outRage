@@ -93,6 +93,12 @@ public enum LaunchSessionBuilder {
             fileManager: fileManager
         )
 
+        try RuntimePathMapper.apply(
+            installed.descriptor.pathMappings ?? [],
+            context: context,
+            fileManager: fileManager
+        )
+
         try RuntimeOverlayInstaller.apply(
             runtime: installed.descriptor,
             cpu: resolvedProfile.cpu,
