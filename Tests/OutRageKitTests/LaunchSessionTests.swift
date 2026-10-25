@@ -18,8 +18,7 @@ import Testing
         supportedCPUBackends: [.rosetta],
         supportedGraphicsBackends: [.dxmt]
     )
-    let descriptorData = try JSONEncoder().encode(descriptor)
-    try descriptorData.write(to: runtimeRoot.appendingPathComponent("runtime.json"))
+    try JSONEncoder().encode(descriptor).write(to: runtimeRoot.appendingPathComponent("runtime.json"))
 
     let runtimeExecutable = bin.appendingPathComponent("runtime")
     try Data("#!/bin/sh\nexit 0\n".utf8).write(to: runtimeExecutable)
@@ -32,7 +31,7 @@ import Testing
     #expect(resolved.rootURL == runtimeRoot)
 }
 
-@Test func launchSessionResolvesInstalledRuntime() throws {
+@Test func launchSessionResolvesInstalledRuntimeAndPaths() throws {
     let fm = FileManager.default
     let root = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
     defer { try? fm.removeItem(at: root) }
@@ -47,6 +46,8 @@ import Testing
     let descriptor = RuntimeDescriptor(
         id: "alpha",
         executable: "bin/runtime",
+        argumentPrefix: ["--prefix", "${PREFIX_ROOT}"],
+        environment: ["RUNTIME_CACHE": "${CACHE_ROOT}"],
         supportedCPUBackends: [.rosetta],
         supportedGraphicsBackends: [.dxmt]
     )
@@ -85,7 +86,11 @@ import Testing
 
     #expect(session.runtimeIdentifier == "alpha")
     #expect(session.command.executableURL.path == "/usr/bin/arch")
-    #expect(session.command.arguments.prefix(2) == ["-x86_64", runtimeExecutable.path])
+    #expect(session.command.arguments.prefix(4) == ["-x86_64", runtimeExecutable.path, "--prefix", paths.prefixURL(for: "sample").path])
+    #expect(session.command.environment["RUNTIME_CACHE"] == paths.cacheURL(for: "sample").path)
+    #expect(session.command.environment["OUTRAGE_TARGET_ROOT"] == targetRoot.path)
+    #expect(fm.fileExists(atPath: paths.prefixURL(for: "sample").path))
+    #expect(fm.fileExists(atPath: paths.cacheURL(for: "sample").path))
 }
 
 @Test func processRunnerExecutesNativeCommand() throws {
