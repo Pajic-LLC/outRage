@@ -8,6 +8,9 @@ on:
       - Tools/runtime/smoke-d3d11-runtime.sh
       - Tools/runtime/smoke/d3d11-context-state.c
       - Tools/runtime/smoke/window-state.c
+      - Tools/runtime/smoke/cef-command.h
+      - Tools/runtime/smoke/cef-renderer-wrapper.c
+      - Tools/runtime/smoke/test-cef-command.c
 
 permissions:
   contents: read
@@ -49,6 +52,13 @@ jobs:
             "$RUNNER_TEMP/runtime-probes/window-state.c" \
             -o "$RUNNER_TEMP/runtime-probes/window-state.exe" -luser32
           file "$RUNNER_TEMP/runtime-probes/window-state.exe" | grep -q 'PE32+.*x86-64'
+          clang -std=c11 -Wall -Wextra -Werror Tools/runtime/smoke/test-cef-command.c -o "$RUNNER_TEMP/test-cef-command"
+          "$RUNNER_TEMP/test-cef-command"
+          cp Tools/runtime/smoke/cef-command.h Tools/runtime/smoke/cef-renderer-wrapper.c "$RUNNER_TEMP/runtime-probes/"
+          x86_64-w64-mingw32-gcc -O2 -Wall -Wextra -Werror -municode -mwindows \
+            Tools/runtime/smoke/cef-renderer-wrapper.c \
+            -o "$RUNNER_TEMP/runtime-probes/cef-renderer-wrapper.exe"
+          file "$RUNNER_TEMP/runtime-probes/cef-renderer-wrapper.exe" | grep -q 'PE32+.*x86-64'
           cd "$RUNNER_TEMP/runtime-probes"
           shasum -a 256 *.c *.exe > SHA256SUMS
       - name: Upload developer hardware probe
