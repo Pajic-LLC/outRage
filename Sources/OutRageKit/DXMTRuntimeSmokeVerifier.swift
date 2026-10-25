@@ -45,12 +45,13 @@ public enum DXMTRuntimeSmokeVerifier {
     }
 
     public static func evaluate(log: String, runtimeIdentifier: String) throws -> DXMTRuntimeSmokeResult {
-        let lower = log.lowercased()
+        let lines = log
+            .lowercased()
+            .split(whereSeparator: { $0.isNewline })
         var loaded: Set<String> = []
 
         for module in requiredModules {
             let moduleLower = module.lowercased()
-            let lines = lower.split(whereSeparator: \Character.isNewline)
             if lines.contains(where: { line in
                 line.contains(moduleLower) && line.contains("builtin")
             }) {
