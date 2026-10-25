@@ -31,15 +31,18 @@ public enum LaunchSessionBuilder {
         try paths.ensureTargetDirectories(for: profile.id, fileManager: fileManager)
 
         let targetRoot = paths.targetURL(for: profile.id)
-        let targetExecutable = targetRoot.appendingPathComponent(profile.executable)
-        guard fileManager.fileExists(atPath: targetExecutable.path) else {
-            throw LaunchSessionError.targetExecutableMissing(targetExecutable.path)
-        }
+        let prefixRoot = paths.prefixURL(for: profile.id)
 
         if profile.runtime == .native {
+            let executableURL = paths.executableURL(for: profile)
+            guard fileManager.fileExists(atPath: executableURL.path) else {
+                throw LaunchSessionError.targetExecutableMissing(executableURL.path)
+            }
+
             let plan = try LaunchPlanner.makePlan(
                 profile: profile,
                 targetRoot: targetRoot,
+                prefixRoot: prefixRoot,
                 host: host
             )
             let command = try LaunchCommandBuilder.make(plan: plan)
@@ -73,15 +76,10 @@ public enum LaunchSessionBuilder {
             runtime: installed.descriptor
         )
 
-        let plan = try LaunchPlanner.makePlan(
-            profile: resolvedProfile,
-            targetRoot: targetRoot,
-            host: host
-        )
         let context = RuntimeLaunchContext(
             runtimeRoot: installed.rootURL,
             targetRoot: targetRoot,
-            prefixRoot: paths.prefixURL(for: profile.id),
+            prefixRoot: prefixRoot,
             cacheRoot: paths.cacheURL(for: profile.id)
         )
 
@@ -101,6 +99,18 @@ public enum LaunchSessionBuilder {
             graphics: resolvedProfile.graphics,
             context: context,
             fileManager: fileManager
+        )
+
+        let executableURL = paths.executableURL(for: resolvedProfile)
+        guard fileManager.fileExists(atPath: executableURL.path) else {
+            throw LaunchSessionError.targetExecutableMissing(executableURL.path)
+        }
+
+        let plan = try LaunchPlanner.makePlan(
+            profile: resolvedProfile,
+            targetRoot: targetRoot,
+            prefixRoot: prefixRoot,
+            host: host
         )
 
         let command = try LaunchCommandBuilder.make(
@@ -126,7 +136,7 @@ public enum LaunchSessionError: Error, Equatable, CustomStringConvertible {
     public var description: String {
         switch self {
         case .targetExecutableMissing(let path):
-            return "Target executable is missing: \(path)"
+            return "Configured executable is missing: \(path)"
         case .runtimeExecutableMissing(let path):
             return "Runtime executable is missing or not executable: \(path)"
         }
