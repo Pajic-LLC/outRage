@@ -71,6 +71,12 @@ public enum RuntimeEnvironmentPreparer {
             cacheRoot: paths.cacheURL(for: profile.id)
         )
 
+        try GraphicsBackendCachePreparer.prepare(
+            graphics: graphics,
+            context: context,
+            fileManager: fileManager
+        )
+
         try PrefixManager.ensureInitialized(
             runtime: installed.descriptor,
             runtimeRoot: installed.rootURL,
