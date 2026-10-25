@@ -31,6 +31,7 @@ jobs:
           python3 Tools/runtime/test-runtime-audit-workflow.py
           python3 Tools/runtime/test-bundle-runtime-dylibs.py
           python3 Tools/runtime/test-relocate-runtime-sonames.py
+          python3 Tools/runtime/test-verify-runtime-deps.py
       - name: Test
         run: swift test
       - name: Validate GTA V Legacy reference profile

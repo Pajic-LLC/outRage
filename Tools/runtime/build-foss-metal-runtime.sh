@@ -105,13 +105,7 @@ if [[ -z "$DEPS_PREFIX" ]]; then
         --work "$WORK/dependencies" --prefix "$DEPS_PREFIX" --jobs "$JOBS"
 fi
 DEPS_PREFIX="$(cd "$DEPS_PREFIX" && pwd)"
-[[ -f "$DEPS_PREFIX/outrage-deps.lock" ]] || die "dependency prefix has no outRage lock"
-grep -Fxq 'architecture=x86_64' "$DEPS_PREFIX/outrage-deps.lock" || die "dependency prefix is not x86_64"
-for library in libgmp libnettle libhogweed libfreetype libgnutls; do
-    dylib="$(find "$DEPS_PREFIX/lib" -maxdepth 1 -type f -name "$library*.dylib" -print -quit)"
-    [[ -n "$dylib" ]] || die "dependency prefix is missing $library"
-    lipo -verify_arch x86_64 "$dylib" || die "dependency is not x86_64: $dylib"
-done
+bash "$REPO_ROOT/Tools/runtime/verify-runtime-deps.sh" "$DEPS_PREFIX"
 
 log "Fetching pinned sources"
 download_verified "$CROSSOVER_URL" "$CROSSOVER_ARCHIVE" "$CROSSOVER_SHA256"

@@ -22,10 +22,38 @@ jobs:
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v7
+      - name: Test dependency architecture preflight
+        run: python3 Tools/runtime/test-verify-runtime-deps.py
+      - name: Identify dependency build toolchain
+        id: toolchain
+        run: |
+          KEY="$( { xcrun clang --version; xcrun --show-sdk-path; printf '%s\n' "$GITHUB_WORKSPACE"; } | shasum -a 256 | cut -d ' ' -f 1)"
+          echo "key=$KEY" >> "$GITHUB_OUTPUT"
+      - name: Restore pinned dependency prefix
+        id: dependencies
+        uses: actions/cache/restore@v6
+        with:
+          path: .build/runtime-foss/dependencies/prefix
+          key: macos15-${{ runner.arch }}-deps-${{ steps.toolchain.outputs.key }}-${{ hashFiles('Tools/runtime/build-x86_64-runtime-deps.sh') }}
+      - name: Build pinned launcher dependencies
+        if: steps.dependencies.outputs.cache-hit != 'true'
+        run: |
+          bash Tools/runtime/build-x86_64-runtime-deps.sh \
+            --work "$GITHUB_WORKSPACE/.build/runtime-foss/dependencies" \
+            --prefix "$GITHUB_WORKSPACE/.build/runtime-foss/dependencies/prefix"
+      - name: Verify pinned dependency prefix
+        run: bash Tools/runtime/verify-runtime-deps.sh "$GITHUB_WORKSPACE/.build/runtime-foss/dependencies/prefix"
+      - name: Save verified dependency prefix before engine build
+        if: steps.dependencies.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: .build/runtime-foss/dependencies/prefix
+          key: ${{ steps.dependencies.outputs.cache-primary-key }}
       - name: Build verified FOSS Metal runtime
         run: |
           bash Tools/runtime/build-foss-metal-runtime.sh \
             --install-deps \
+            --dependency-prefix "$GITHUB_WORKSPACE/.build/runtime-foss/dependencies/prefix" \
             --output "$RUNNER_TEMP/runtime-packages"
       - name: Install packaged runtime
         run: |
@@ -57,4 +85,14 @@ jobs:
         with:
           name: outrage-foss-metal-runtime
           path: ${{ runner.temp }}/runtime-packages/
+          retention-days: 7
+      - name: Upload failed build logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: runtime-build-failure-logs
+          path: |
+            .build/runtime-foss/*.log
+            .build/runtime-foss/dependencies/*.log
+          if-no-files-found: ignore
           retention-days: 7
