@@ -26,6 +26,13 @@ jobs:
           bash Tools/runtime/build-foss-metal-runtime.sh \
             --install-deps \
             --output "$RUNNER_TEMP/runtime-packages"
+      - name: Verify packaged runtime
+        run: |
+          ARCHIVE="$(find "$RUNNER_TEMP/runtime-packages" -maxdepth 1 -type f -name '*.zip' -print -quit)"
+          MANIFEST="$(find "$RUNNER_TEMP/runtime-packages" -maxdepth 1 -type f -name '*.manifest.json' -print -quit)"
+          test -n "$ARCHIVE"
+          test -n "$MANIFEST"
+          swift run -c release outrage runtime-install "$ARCHIVE" "$MANIFEST"
       - name: Inspect package
         run: |
           ls -lah "$RUNNER_TEMP/runtime-packages"
