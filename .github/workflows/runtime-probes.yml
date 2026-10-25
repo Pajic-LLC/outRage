@@ -12,6 +12,8 @@ on:
       - Tools/runtime/smoke/cef-renderer-wrapper.c
       - Tools/runtime/smoke/test-cef-command.c
       - Tools/runtime/smoke/d2d-window.cpp
+      - Tools/runtime/smoke/cef-process-probe.c
+      - Tools/runtime/smoke/winemac-window-observer.m
 
 permissions:
   contents: read
@@ -63,8 +65,14 @@ jobs:
           cp Tools/runtime/smoke/d2d-window.cpp "$RUNNER_TEMP/runtime-probes/"
           x86_64-w64-mingw32-g++ -O2 -Wall -Wextra -Werror -static-libgcc -static-libstdc++ \
             Tools/runtime/smoke/d2d-window.cpp -o "$RUNNER_TEMP/runtime-probes/d2d-window.exe" -ld2d1 -lole32 -luuid
+          cp Tools/runtime/smoke/cef-process-probe.c "$RUNNER_TEMP/runtime-probes/"
+          x86_64-w64-mingw32-gcc -O2 -Wall -Wextra -Werror -municode \
+            Tools/runtime/smoke/cef-process-probe.c -o "$RUNNER_TEMP/runtime-probes/cef-process-probe.exe"
+          clang -arch x86_64 -dynamiclib -fobjc-arc -Wall -Wextra -Werror -mmacosx-version-min=14.0 \
+            Tools/runtime/smoke/winemac-window-observer.m -framework AppKit -framework QuartzCore \
+            -o "$RUNNER_TEMP/runtime-probes/window-observer.dylib"
           cd "$RUNNER_TEMP/runtime-probes"
-          shasum -a 256 *.c *.h *.cpp *.exe > SHA256SUMS
+          shasum -a 256 *.c *.h *.cpp *.exe *.dylib > SHA256SUMS
       - name: Upload developer hardware probe
         uses: actions/upload-artifact@v7
         with:
