@@ -92,7 +92,11 @@ struct OutRageCLI {
             guard arguments.count == 2 else { throw CLIError.usage("plan <profile.json>") }
             let profile = try ProfileLoader.load(from: URL(fileURLWithPath: arguments[1]))
             let paths = RuntimePaths()
-            let plan = try LaunchPlanner.makePlan(profile: profile, targetRoot: paths.targetURL(for: profile.id))
+            let plan = try LaunchPlanner.makePlan(
+                profile: profile,
+                targetRoot: paths.targetURL(for: profile.id),
+                prefixRoot: paths.prefixURL(for: profile.id)
+            )
             print(plan)
 
         case "prepare":
@@ -213,12 +217,22 @@ struct OutRageCLI {
 
     static func describe(_ action: AcquisitionAction) -> String {
         switch action {
-        case let .managedLauncher(sourceURL, _, destinationURL, arguments, targetRoot):
+        case let .managedLauncher(
+            sourceURL,
+            _,
+            destinationURL,
+            installerArguments,
+            installedLauncherURL,
+            launcherArguments,
+            targetRoot
+        ):
             return [
                 "kind: managed-launcher",
                 "source: \(sourceURL.absoluteString)",
                 "installer: \(destinationURL.path)",
-                "arguments: \(arguments.joined(separator: " "))",
+                "installer-arguments: \(installerArguments.joined(separator: " "))",
+                "launcher: \(installedLauncherURL?.path ?? "unconfigured")",
+                "launcher-arguments: \(launcherArguments.joined(separator: " "))",
                 "target: \(targetRoot.path)"
             ].joined(separator: "\n")
         case let .steam(appID, branch, targetRoot):
