@@ -34,3 +34,22 @@ import Testing
 
     #expect(selected?.pid == 21)
 }
+
+@Test func processHandoffNeverReturnsLauncherWhenItsArgumentsMentionTarget() {
+    let snapshots = [
+        ProcessSnapshot(
+            pid: 30,
+            parentPID: 1,
+            command: "/runtime/wine Launcher.exe --launch Target.exe"
+        )
+    ]
+
+    let selected = ProcessHandoffResolver.selectTarget(
+        commandContains: "Target.exe",
+        launcherPID: 30,
+        excluding: [],
+        snapshots: snapshots
+    )
+
+    #expect(selected == nil)
+}
