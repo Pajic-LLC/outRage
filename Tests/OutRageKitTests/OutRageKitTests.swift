@@ -40,7 +40,12 @@ import Testing
         id: "roundtrip",
         displayName: "Round Trip",
         bundleIdentifier: "com.pajic.roundtrip",
-        executable: "target.exe"
+        executable: "target.exe",
+        performance: PerformancePolicy(
+            preferredMaxFrameRate: 60,
+            metalFXSpatialUpscaling: true,
+            metalFXSpatialUpscaleFactor: 1.5
+        )
     )
 
     try ProfileLoader.save(profile, to: url)
