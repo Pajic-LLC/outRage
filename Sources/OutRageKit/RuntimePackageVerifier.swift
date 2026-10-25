@@ -3,12 +3,12 @@ import Foundation
 public struct RuntimePackageVerification: Equatable, Sendable {
     public let runtimeIdentifier: String
     public let version: String
-    public let executableURL: URL
+    public let executable: String
 
-    public init(runtimeIdentifier: String, version: String, executableURL: URL) {
+    public init(runtimeIdentifier: String, version: String, executable: String) {
         self.runtimeIdentifier = runtimeIdentifier
         self.version = version
-        self.executableURL = executableURL
+        self.executable = executable
     }
 }
 
@@ -37,15 +37,15 @@ public enum RuntimePackageVerifier {
         )
         try installed.descriptor.validate()
 
-        let executable = installed.rootURL.appendingPathComponent(installed.descriptor.executable)
-        guard fileManager.isExecutableFile(atPath: executable.path) else {
-            throw LaunchSessionError.runtimeExecutableMissing(executable.path)
+        let executableURL = installed.rootURL.appendingPathComponent(installed.descriptor.executable)
+        guard fileManager.isExecutableFile(atPath: executableURL.path) else {
+            throw LaunchSessionError.runtimeExecutableMissing(executableURL.path)
         }
 
         return RuntimePackageVerification(
             runtimeIdentifier: installed.descriptor.id,
             version: manifest.version,
-            executableURL: executable
+            executable: installed.descriptor.executable
         )
     }
 }
